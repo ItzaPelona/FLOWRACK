@@ -15,7 +15,7 @@ A modern, hybrid warehouse management system built with vanilla technologies for
 
 1. **Clone or Download the Project**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ItzaPelona/FLOWRACK_LUS.git
    cd FLOWRACK
    ```
 
@@ -249,14 +249,6 @@ The system includes sample data for testing:
 - [ ] Advanced inventory forecasting
 - [ ] Supplier management module
 
-### Contribution
-This is a complete, production-ready system. For customizations:
-1. Fork the project
-2. Create feature branches
-3. Test thoroughly
-4. Document changes
-5. Submit pull requests
-
 ## 📞 Support
 
 ### Documentation
@@ -269,10 +261,6 @@ This is a complete, production-ready system. For customizations:
 - Review Flask and PostgreSQL documentation
 - Test with sample data first
 - Verify environment configuration
-
-## 📄 License
-
-This project is provided as-is for educational and commercial use. Please ensure compliance with all third-party library licenses.
 
 ---
 
@@ -474,5 +462,6 @@ python -m pytest tests/
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Support
+
 
 For support and questions, please open an issue on GitHub or contact the development team.
