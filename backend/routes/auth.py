@@ -17,13 +17,16 @@ def login():
     """User login endpoint"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         registration_number = data.get('registration_number')
         password = data.get('password')
-        
+
+        # Debug: log incoming login attempt (only registration number, not password)
+        logging.info(f"Login attempt for registration_number='{registration_number}' from {request.remote_addr}")
+
         if not registration_number or not password:
             return jsonify({'error': 'Registration number and password are required'}), 400
         
@@ -31,6 +34,7 @@ def login():
         user = User.get_by_registration_number(registration_number)
         
         if not user:
+            logging.info(f"Login failed: user not found: {registration_number}")
             return jsonify({'error': 'Invalid credentials'}), 401
         
         # Check password
@@ -47,6 +51,7 @@ def login():
             password_hash = user_with_hash.password_hash
         
         if not User.check_password(password, password_hash):
+            logging.info(f"Login failed: invalid password for {registration_number}")
             return jsonify({'error': 'Invalid credentials'}), 401
         
         # Create access token

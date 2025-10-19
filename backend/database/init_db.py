@@ -9,11 +9,17 @@ from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
-# Add the parent directory to Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # Load environment variables
 load_dotenv()
+
+import sys
+from pathlib import Path
+# Ensure we add the repository root (two levels up from this file) so
+# `import backend...` resolves correctly when running this script from
+# the `backend/database` directory.
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 def create_database():
     """Create the database if it doesn't exist"""
