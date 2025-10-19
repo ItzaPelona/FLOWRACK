@@ -1,10 +1,8 @@
-# FlowRack Warehouse Management System
-
 # FlowRack - Warehouse Management System
 
 A modern, hybrid warehouse management system built with vanilla technologies for simplicity and easy deployment on Hostinger. This system combines a Progressive Web App (PWA) with comprehensive inventory management, real-time tracking, and user request processing.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.8 or higher
@@ -43,9 +41,9 @@ A modern, hybrid warehouse management system built with vanilla technologies for
 3. **Access the Application**
    - Open your browser and go to: `http://localhost:5000`
    - Use default credentials: `ADMIN001` / `admin123`
-   - **⚠️ Change default passwords immediately after first login**
+   - **!!!! Change default passwords immediately after first login**
 
-## 🏗️ Architecture
+## Architecture
 
 ### Technology Stack
 - **Backend**: Flask 2.3.3 with WebSocket support
@@ -71,7 +69,7 @@ FLOWRACK/
 └── docs/                  # Documentation
 ```
 
-## 📋 Features
+## Features
 
 ### Core Functionality
 - **User Management**: Role-based access (Admin, Operator, User)
@@ -92,7 +90,7 @@ FLOWRACK/
 - Dashboard metrics refresh
 - Multi-user collaboration
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables (.env)
 ```env
@@ -123,7 +121,7 @@ The system uses PostgreSQL with a normalized schema including:
 - Debt management system
 - Audit trails and transactions
 
-## 🌐 Deployment
+## Deployment
 
 ### Hostinger Deployment
 1. Upload files to your hosting directory
@@ -146,7 +144,7 @@ python backend/database/init_db.py
 python -m backend.app
 ```
 
-## 📱 Progressive Web App
+## Progressive Web App
 
 ### PWA Features
 - **Offline Support**: Works without internet connection
@@ -162,7 +160,7 @@ The PWA provides a native app-like experience:
 - Background sync capabilities
 - Device integration features
 
-## 🔐 Security Features
+## Security Features
 
 ### Authentication & Authorization
 - JWT token-based authentication
@@ -178,7 +176,7 @@ The PWA provides a native app-like experience:
 - Input validation
 - Audit logging
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing
 1. Start the application using the startup script
@@ -200,7 +198,7 @@ curl -X GET http://localhost:5000/api/products \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
-## 📊 Default Data
+## Default Data
 
 The system includes sample data for testing:
 - **Admin User**: ADMIN001 / admin123
@@ -209,7 +207,7 @@ The system includes sample data for testing:
 - **Sample Products**: Various warehouse items with stock levels
 - **Sample Requests**: Different request states for testing
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -237,7 +235,7 @@ The system includes sample data for testing:
 - Check browser console for frontend issues
 - Monitor network tab for API calls
 
-## 📈 Roadmap
+## Roadmap
 
 ### Future Enhancements
 - [ ] Barcode scanning integration
@@ -249,7 +247,7 @@ The system includes sample data for testing:
 - [ ] Advanced inventory forecasting
 - [ ] Supplier management module
 
-## 📞 Support
+## Support
 
 ### Documentation
 - `DEPLOYMENT.md`: Detailed deployment guide
@@ -266,7 +264,7 @@ The system includes sample data for testing:
 
 **FlowRack** - Simplifying warehouse management with modern web technologies.
 
-*Built with ❤️ using vanilla technologies for maximum compatibility and ease of deployment.*
+*Built with ❤️ :3 using vanilla technologies for maximum compatibility and ease of deployment.*
 
 ## Table of Contents
 - [Overview](#overview)
@@ -465,3 +463,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 
 For support and questions, please open an issue on GitHub or contact the development team.
+
