@@ -6,8 +6,8 @@ Run this script to set up the database schema and insert initial data
 import os
 import sys
 from dotenv import load_dotenv
-import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+import psycopg
+from psycopg import sql
 
 # Load environment variables
 load_dotenv()
@@ -25,33 +25,33 @@ def create_database():
     """Create the database if it doesn't exist"""
     try:
         # Connect to PostgreSQL server (not the specific database)
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             host=os.getenv('DB_HOST', 'localhost'),
             port=os.getenv('DB_PORT', '5432'),
             user=os.getenv('DB_USER', 'flowrack_user'),
             password=os.getenv('DB_PASSWORD', 'your_password'),
-            database='postgres'  # Connect to default postgres database
+            dbname='postgres',  # Connect to default postgres database
+            autocommit=True
         )
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        
-        cursor = conn.cursor()
         
         # Check if database exists
         db_name = os.getenv('DB_NAME', 'flowrack')
-        cursor.execute("SELECT 1 FROM pg_database WHERE datname = %s", (db_name,))
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM pg_database WHERE datname = %s", (db_name,))
+            
+            if not cursor.fetchone():
+                print(f"Creating database '{db_name}'...")
+                cursor.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(db_name)))
+                print(f"Database '{db_name}' created successfully!")
+            else:
+                print(f"Database '{db_name}' already exists.")
         
-        if not cursor.fetchone():
-            print(f"Creating database '{db_name}'...")
-            cursor.execute(f'CREATE DATABASE "{db_name}"')
-            print(f"Database '{db_name}' created successfully!")
-        else:
-            print(f"Database '{db_name}' already exists.")
-        
-        cursor.close()
         conn.close()
         
     except Exception as e:
         print(f"Error creating database: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     
     return True

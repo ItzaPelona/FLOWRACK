@@ -5,6 +5,7 @@ Debt routes
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from backend.models.user import User
+from backend.routes.auth import get_current_user_id
 import logging
 
 debts_bp = Blueprint('debts', __name__)
@@ -14,7 +15,7 @@ debts_bp = Blueprint('debts', __name__)
 def get_debts():
     """Get debts with optional filtering"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user:
@@ -79,7 +80,7 @@ def get_debts():
 def get_debt(debt_id):
     """Get specific debt by ID"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user:
@@ -121,7 +122,7 @@ def get_debt(debt_id):
 def create_debt():
     """Create new debt (operator/admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['operator', 'admin']:
@@ -183,7 +184,7 @@ def create_debt():
 def resolve_debt(debt_id):
     """Resolve debt (operator/admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['operator', 'admin']:
@@ -238,7 +239,7 @@ def resolve_debt(debt_id):
 def get_debt_statistics():
     """Get debt statistics (operator/admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['operator', 'admin']:

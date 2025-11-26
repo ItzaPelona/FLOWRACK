@@ -21,6 +21,9 @@ CREATE TABLE users (
     role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'operator', 'admin')),
     department VARCHAR(100),
     is_active BOOLEAN DEFAULT TRUE,
+    status VARCHAR(20) DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected', 'suspended')),
+    avatar_url TEXT,
+    strikes INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -55,6 +58,8 @@ CREATE TABLE requests (
     collection_date TIMESTAMP,
     delivery_date TIMESTAMP,
     return_date TIMESTAMP,
+    expected_return_datetime TIMESTAMP,
+    qr_code TEXT,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -145,10 +150,11 @@ CREATE TRIGGER update_debts_updated_at BEFORE UPDATE ON debts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Sample data for testing
-INSERT INTO users (registration_number, password_hash, first_name, last_name, email, role, department) VALUES
-('ADM001', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewfOCzM5JBqQ5SZu', 'Admin', 'User', 'admin@flowrack.com', 'admin', 'Administration'),
-('OPR001', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewfOCzM5JBqQ5SZu', 'Warehouse', 'Operator', 'operator@flowrack.com', 'operator', 'Warehouse'),
-('USR001', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewfOCzM5JBqQ5SZu', 'John', 'Doe', 'john.doe@example.com', 'user', 'Engineering');
+-- Note: All sample users use password: 'password123'
+INSERT INTO users (registration_number, password_hash, first_name, last_name, email, role, department, status, avatar_url) VALUES
+('ADM001', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewfOCzM5JBqQ5SZu', 'Admin', 'User', 'admin@flowrack.com', 'admin', 'Administration', 'approved', NULL),
+('OPR001', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewfOCzM5JBqQ5SZu', 'Warehouse', 'Operator', 'operator@flowrack.com', 'operator', 'Warehouse', 'approved', NULL),
+('USR001', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewfOCzM5JBqQ5SZu', 'John', 'Doe', 'john.doe@example.com', 'user', 'Engineering', 'approved', NULL);
 
 INSERT INTO products (name, description, category, unit_of_measure, stock_quantity, minimum_stock, unit_price, location) VALUES
 ('Safety Helmets', 'White safety helmets for construction work', 'Safety Equipment', 'pcs', 50, 10, 25.99, 'A-01-001'),

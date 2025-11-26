@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from backend.models.product import Product
 from backend.models.user import User
+from backend.routes.auth import get_current_user_id
 import logging
 
 products_bp = Blueprint('products', __name__)
@@ -65,7 +66,7 @@ def get_product(product_id):
 def create_product():
     """Create new product (admin/operator only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['admin', 'operator']:
@@ -109,7 +110,7 @@ def create_product():
 def update_product(product_id):
     """Update product (admin/operator only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['admin', 'operator']:
@@ -141,7 +142,7 @@ def update_product(product_id):
 def update_stock(product_id):
     """Update product stock (admin/operator only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['admin', 'operator']:
@@ -195,7 +196,7 @@ def update_stock(product_id):
 def delete_product(product_id):
     """Deactivate product (admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role != 'admin':
@@ -231,7 +232,7 @@ def get_categories():
 def get_low_stock_products():
     """Get products with low stock (operator/admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['admin', 'operator']:
@@ -278,7 +279,7 @@ def check_availability(product_id):
 def get_product_transactions(product_id):
     """Get product transaction history (operator/admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['admin', 'operator']:

@@ -12,6 +12,10 @@ auth_bp = Blueprint('auth', __name__)
 # In-memory blacklist for JWT tokens (in production, use Redis)
 blacklisted_tokens = set()
 
+def get_current_user_id():
+    """Helper function to get current user ID as integer from JWT"""
+    return int(get_jwt_identity())
+
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """User login endpoint"""
@@ -49,8 +53,8 @@ def login():
         if not User.check_password(password, password_hash):
             return jsonify({'error': 'Invalid credentials'}), 401
         
-        # Create access token
-        access_token = create_access_token(identity=user.id)
+        # Create access token - convert user.id to string for JWT
+        access_token = create_access_token(identity=str(user.id))
         
         return jsonify({
             'message': 'Login successful',
@@ -129,7 +133,7 @@ def logout():
 def get_profile():
     """Get current user profile"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         user = User.get_by_id(current_user_id)
         
         if not user:
@@ -156,7 +160,7 @@ def get_profile():
 def change_password():
     """Change user password"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         data = request.get_json()
         
         if not data:
@@ -190,7 +194,7 @@ def change_password():
 def verify_token():
     """Verify JWT token validity"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         jti = get_jwt()['jti']
         
         # Check if token is blacklisted

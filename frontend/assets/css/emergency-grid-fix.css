@@ -1,0 +1,27 @@
+/* EMERGENCY FIX - Add this to the TOP of style.css if cards are still vertical */
+
+/* Force Bootstrap grid to work */
+* {
+    box-sizing: border-box;
+}
+
+.row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    margin-right: -0.75rem !important;
+    margin-left: -0.75rem !important;
+}
+
+.col-3 {
+    flex: 0 0 auto !important;
+    width: 25% !important;
+    padding-right: 0.75rem !important;
+    padding-left: 0.75rem !important;
+}
+
+.col-md-3 {
+    flex: 0 0 auto !important;
+    width: 25% !important;
+    padding-right: 0.75rem !important;
+    padding-left: 0.75rem !important;
+}

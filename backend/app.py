@@ -26,7 +26,8 @@ app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16 * 1024
 
 # Initialize extensions
 cors = CORS(app, origins=os.getenv('CORS_ORIGINS', '*').split(','))
-socketio = SocketIO(app, cors_allowed_origins=os.getenv('SOCKET_IO_CORS_ALLOWED_ORIGINS', '*'))
+# Use threading mode instead of eventlet for Python 3.13 compatibility
+socketio = SocketIO(app, cors_allowed_origins=os.getenv('SOCKET_IO_CORS_ALLOWED_ORIGINS', '*'), async_mode='threading')
 jwt = JWTManager(app)
 
 # Import and register blueprints
@@ -75,4 +76,5 @@ if __name__ == '__main__':
     socketio.run(app, 
                 host='0.0.0.0', 
                 port=int(os.getenv('PORT', 5000)), 
-                debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true')
+                debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true',
+                allow_unsafe_werkzeug=True)

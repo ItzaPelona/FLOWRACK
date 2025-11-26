@@ -5,6 +5,7 @@ Dashboard routes
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from backend.models.user import User
+from backend.routes.auth import get_current_user_id
 import logging
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -14,7 +15,7 @@ dashboard_bp = Blueprint('dashboard', __name__)
 def get_dashboard():
     """Get dashboard data based on user role"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user:
@@ -83,7 +84,7 @@ def get_dashboard():
 def get_recent_activity():
     """Get recent activity"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user:
@@ -178,7 +179,7 @@ def get_recent_activity():
 def get_analytics():
     """Get analytics data (operator/admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         current_user = User.get_by_id(current_user_id)
         
         if not current_user or current_user.role not in ['operator', 'admin']:

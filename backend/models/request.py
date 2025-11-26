@@ -5,7 +5,12 @@ Request model and database operations
 from backend.database import db
 from backend.models.user import User
 from backend.models.product import Product
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
+import qrcode
+import io
+import base64
+import hashlib
+import secrets
 
 class Request:
     """Request model class"""
@@ -25,6 +30,12 @@ class Request:
             self.delivery_date = request_data.get('delivery_date')
             self.return_date = request_data.get('return_date')
             self.notes = request_data.get('notes')
+            self.qr_code = request_data.get('qr_code')
+            self.expected_return_datetime = request_data.get('expected_return_datetime')
+            self.actual_return_datetime = request_data.get('actual_return_datetime')
+            self.is_late = request_data.get('is_late', False)
+            self.is_damaged = request_data.get('is_damaged', False)
+            self.damage_description = request_data.get('damage_description')
             self.created_at = request_data.get('created_at')
             self.updated_at = request_data.get('updated_at')
     
@@ -41,10 +52,45 @@ class Request:
         return f"REQ-{date_str}-{random_str}"
     
     @classmethod
+    def generate_qr_code(cls, request_number, user_id):
+        """Generate unique QR code for request"""
+        # Create unique QR data combining request number, user ID, and random token
+        token = secrets.token_urlsafe(16)
+        qr_data = f"FLOWRACK:{request_number}:{token}"
+        
+        # Store the full QR data (not a hash) so it can be scanned
+        # The QR data itself is unique enough
+        return qr_data, qr_data
+    
+    @classmethod
+    def get_qr_code_image(cls, qr_data):
+        """Generate QR code image as base64 string"""
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convert to base64
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        img_str = base64.b64encode(buffer.getvalue()).decode()
+        
+        return f"data:image/png;base64,{img_str}"
+    
+    @classmethod
     def create(cls, user_id, requested_date, requested_time, items, 
-               estimated_usage_period=None, supervising_instructor=None, purpose=None):
-        """Create new request with items"""
+               expected_return_datetime=None, estimated_usage_period=None, 
+               supervising_instructor=None, purpose=None, notes=None):
+        """Create new request with items and QR code"""
         try:
+            # Validate that requested date is at least 1 day in the future
+            today = date.today()
+            min_request_date = today + timedelta(days=1)
+            
+            if requested_date < min_request_date:
+                raise ValueError("Requests must be made at least 1 day in advance")
+            
             # Generate request number
             request_number = cls.generate_request_number()
             
@@ -52,41 +98,73 @@ class Request:
             while cls.get_by_request_number(request_number):
                 request_number = cls.generate_request_number()
             
+            # Generate QR code
+            qr_code, qr_data = cls.generate_qr_code(request_number, user_id)
+            
+            # Ensure unique QR code (qr_code and qr_data are now the same)
+            while cls.get_by_qr_code(qr_code):
+                qr_code, qr_data = cls.generate_qr_code(request_number, user_id)
+            
+            # Parse expected return datetime if provided as string
+            parsed_return_datetime = None
+            if expected_return_datetime:
+                if isinstance(expected_return_datetime, str):
+                    try:
+                        parsed_return_datetime = datetime.strptime(expected_return_datetime, '%Y-%m-%d %H:%M')
+                    except ValueError:
+                        raise ValueError("Invalid expected_return_datetime format. Use 'YYYY-MM-DD HH:MM'")
+                else:
+                    parsed_return_datetime = expected_return_datetime
+            
             # Prepare queries for transaction
             queries_and_params = []
             
             # Create request
             create_request_query = """
                 INSERT INTO requests (user_id, request_number, requested_date, requested_time,
-                                    estimated_usage_period, supervising_instructor, purpose)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                    estimated_usage_period, supervising_instructor, purpose, notes,
+                                    qr_code, expected_return_datetime)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, user_id, request_number, status, requested_date, requested_time,
-                         estimated_usage_period, supervising_instructor, purpose, created_at
+                         estimated_usage_period, supervising_instructor, purpose, notes,
+                         qr_code, expected_return_datetime, created_at
             """
             queries_and_params.append((create_request_query,
                 (user_id, request_number, requested_date, requested_time,
-                 estimated_usage_period, supervising_instructor, purpose)))
+                 estimated_usage_period, supervising_instructor, purpose, notes,
+                 qr_code, parsed_return_datetime)))
             
             # Execute transaction to create request
             results = db.execute_transaction(queries_and_params)
             
             if results and len(results) > 0:
-                request_data = results[0][0]  # First result, first row
-                request = cls(request_data)
-                
-                # Add items to request
-                for item in items:
-                    request.add_item(
-                        product_id=item['product_id'],
-                        requested_quantity=item['requested_quantity']
-                    )
-                
-                return request
+                # Results from RETURNING clause should be a list of rows
+                returned_rows = results[0]
+                if returned_rows and len(returned_rows) > 0:
+                    request_data = returned_rows[0]  # First row from the result
+                    request = cls(request_data)
+                    
+                    # Store the full QR data for image generation
+                    request.qr_data = qr_data
+                    
+                    # Add items to request
+                    for item in items:
+                        request.add_item(
+                            product_id=item['product_id'],
+                            requested_quantity=item['requested_quantity']
+                        )
+                    
+                    return request
             
             return None
             
+        except ValueError as ve:
+            print(f"Validation error creating request: {ve}")
+            raise ve
         except Exception as e:
             print(f"Error creating request: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     @classmethod
@@ -95,7 +173,9 @@ class Request:
         query = """
             SELECT id, user_id, request_number, status, requested_date, requested_time,
                    estimated_usage_period, supervising_instructor, purpose, collection_date,
-                   delivery_date, return_date, notes, created_at, updated_at
+                   delivery_date, return_date, notes, qr_code, expected_return_datetime,
+                   actual_return_datetime, is_late, is_damaged, damage_description,
+                   created_at, updated_at
             FROM requests WHERE id = %s
         """
         result = db.execute_query(query, (request_id,), fetch=True, fetchone=True)
@@ -107,10 +187,26 @@ class Request:
         query = """
             SELECT id, user_id, request_number, status, requested_date, requested_time,
                    estimated_usage_period, supervising_instructor, purpose, collection_date,
-                   delivery_date, return_date, notes, created_at, updated_at
+                   delivery_date, return_date, notes, qr_code, expected_return_datetime,
+                   actual_return_datetime, is_late, is_damaged, damage_description,
+                   created_at, updated_at
             FROM requests WHERE request_number = %s
         """
         result = db.execute_query(query, (request_number,), fetch=True, fetchone=True)
+        return cls(result) if result else None
+    
+    @classmethod
+    def get_by_qr_code(cls, qr_code):
+        """Get request by QR code"""
+        query = """
+            SELECT id, user_id, request_number, status, requested_date, requested_time,
+                   estimated_usage_period, supervising_instructor, purpose, collection_date,
+                   delivery_date, return_date, notes, qr_code, expected_return_datetime,
+                   actual_return_datetime, is_late, is_damaged, damage_description,
+                   created_at, updated_at
+            FROM requests WHERE qr_code = %s
+        """
+        result = db.execute_query(query, (qr_code,), fetch=True, fetchone=True)
         return cls(result) if result else None
     
     @classmethod
@@ -147,7 +243,9 @@ class Request:
         query = """
             SELECT r.id, r.user_id, r.request_number, r.status, r.requested_date, r.requested_time,
                    r.estimated_usage_period, r.supervising_instructor, r.purpose, r.collection_date,
-                   r.delivery_date, r.return_date, r.notes, r.created_at, r.updated_at,
+                   r.delivery_date, r.return_date, r.notes, r.qr_code, r.expected_return_datetime,
+                   r.actual_return_datetime, r.is_late, r.is_damaged, r.damage_description,
+                   r.created_at, r.updated_at,
                    u.first_name || ' ' || u.last_name as user_name,
                    u.registration_number
             FROM requests r
@@ -370,7 +468,7 @@ class Request:
             'items': availability
         }
     
-    def to_dict(self, include_items=False, include_user=False):
+    def to_dict(self, include_items=False, include_user=False, include_qr_image=False):
         """Convert request to dictionary"""
         request_dict = {
             'id': self.id,
@@ -386,9 +484,23 @@ class Request:
             'delivery_date': self.delivery_date.isoformat() if self.delivery_date else None,
             'return_date': self.return_date.isoformat() if self.return_date else None,
             'notes': self.notes,
+            'qr_code': self.qr_code,
+            'expected_return_datetime': self.expected_return_datetime.isoformat() if self.expected_return_datetime else None,
+            'actual_return_datetime': self.actual_return_datetime.isoformat() if self.actual_return_datetime else None,
+            'is_late': self.is_late,
+            'is_damaged': self.is_damaged,
+            'damage_description': self.damage_description,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+        
+        # Generate QR code image if requested and QR data is available
+        if include_qr_image and hasattr(self, 'qr_data') and self.qr_data:
+            request_dict['qr_code_image'] = self.get_qr_code_image(self.qr_data)
+        elif include_qr_image and self.qr_code:
+            # If qr_data not available, use request number as fallback
+            qr_data = f"FLOWRACK:{self.request_number}:REQ{self.id}"
+            request_dict['qr_code_image'] = self.get_qr_code_image(qr_data)
         
         if include_items:
             request_dict['items'] = self.get_items()

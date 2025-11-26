@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FlowRack Debug Info</title>
+</head>
+<body>
+    <h1>FlowRack Debug Information</h1>
+    <h2>Browser Cache Test</h2>
+    <p>Check browser console for logs when you:</p>
+    <ol>
+        <li>Hard refresh the page (Ctrl+Shift+R or Ctrl+F5)</li>
+        <li>Open browser DevTools (F12)</li>
+        <li>Go to Console tab</li>
+        <li>Look for "FlowRack App initializing..."</li>
+        <li>Look for "Quick Scan available: function"</li>
+        <li>Look for "Deliveries View available: function"</li>
+    </ol>
+    
+    <h2>Manual Tests</h2>
+    <button onclick="testQuickScan()">Test Quick Scan Modal</button>
+    <button onclick="testDeliveriesView()">Test Deliveries View</button>
+    <button onclick="testKeyboard()">Test Ctrl+Q</button>
+    
+    <div id="output" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+    
+    <script>
+        function log(msg) {
+            const output = document.getElementById('output');
+            output.innerHTML += '<div>' + msg + '</div>';
+            console.log(msg);
+        }
+        
+        function testQuickScan() {
+            log('Testing Quick Scan Modal...');
+            if (typeof App !== 'undefined') {
+                if (typeof App.showQuickScanModal === 'function') {
+                    log('✓ App.showQuickScanModal exists');
+                    try {
+                        App.showQuickScanModal();
+                        log('✓ Quick Scan Modal opened successfully');
+                    } catch (e) {
+                        log('✗ Error opening Quick Scan: ' + e.message);
+                    }
+                } else {
+                    log('✗ App.showQuickScanModal is not a function');
+                }
+            } else {
+                log('✗ App object not found');
+            }
+        }
+        
+        function testDeliveriesView() {
+            log('Testing Deliveries View...');
+            if (typeof App !== 'undefined') {
+                if (typeof App.loadDeliveriesView === 'function') {
+                    log('✓ App.loadDeliveriesView exists');
+                    try {
+                        App.showView('deliveries');
+                        log('✓ Deliveries View loaded successfully');
+                    } catch (e) {
+                        log('✗ Error loading Deliveries: ' + e.message);
+                    }
+                } else {
+                    log('✗ App.loadDeliveriesView is not a function');
+                }
+            } else {
+                log('✗ App object not found');
+            }
+        }
+        
+        function testKeyboard() {
+            log('Testing Ctrl+Q keyboard shortcut...');
+            log('Press Ctrl+Q now...');
+            
+            document.addEventListener('keydown', function handler(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'q') {
+                    e.preventDefault();
+                    log('✓ Ctrl+Q detected');
+                    document.removeEventListener('keydown', handler);
+                }
+            });
+        }
+        
+        // Auto-run checks on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('=== AUTO DIAGNOSTICS ===');
+                log('App exists: ' + (typeof App !== 'undefined'));
+                log('showQuickScanModal: ' + typeof App?.showQuickScanModal);
+                log('loadDeliveriesView: ' + typeof App?.loadDeliveriesView);
+                log('Current user: ' + (App?.currentUser ? App.currentUser.role : 'Not logged in'));
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -23,6 +23,8 @@ class User:
             self.is_active = user_data.get('is_active', True)
             self.created_at = user_data.get('created_at')
             self.updated_at = user_data.get('updated_at')
+            self.status = user_data.get('status', 'active')
+            self.avatar_url = user_data.get('avatar_url')
     
     @staticmethod
     def hash_password(password):
@@ -56,7 +58,7 @@ class User:
         """Get user by ID"""
         query = """
             SELECT id, registration_number, first_name, last_name, email, phone, 
-                   role, department, is_active, created_at, updated_at
+                   role, department, is_active, created_at, updated_at, status, avatar_url
             FROM users WHERE id = %s AND is_active = TRUE
         """
         result = db.execute_query(query, (user_id,), fetch=True, fetchone=True)
@@ -67,7 +69,7 @@ class User:
         """Get user by registration number"""
         query = """
             SELECT id, registration_number, password_hash, first_name, last_name, email, 
-                   phone, role, department, is_active, created_at, updated_at
+                   phone, role, department, is_active, created_at, updated_at, status, avatar_url
             FROM users WHERE registration_number = %s AND is_active = TRUE
         """
         result = db.execute_query(query, (registration_number,), fetch=True, fetchone=True)
@@ -78,7 +80,7 @@ class User:
         """Get user by email"""
         query = """
             SELECT id, registration_number, password_hash, first_name, last_name, email, 
-                   phone, role, department, is_active, created_at, updated_at
+                   phone, role, department, is_active, created_at, updated_at, status, avatar_url
             FROM users WHERE email = %s AND is_active = TRUE
         """
         result = db.execute_query(query, (email,), fetch=True, fetchone=True)
@@ -89,7 +91,7 @@ class User:
         """Get all users with optional filtering"""
         query = """
             SELECT id, registration_number, first_name, last_name, email, phone, 
-                   role, department, is_active, created_at, updated_at
+                   role, department, is_active, created_at, updated_at, status, avatar_url
             FROM users WHERE is_active = TRUE
         """
         params = []
@@ -152,19 +154,14 @@ class User:
     
     def change_password(self, old_password, new_password):
         """Change user password"""
-        # Verify old password
-        user_with_hash = self.get_by_id(self.id)
-        if not user_with_hash:
-            return False
-        
         # Get password hash from database
         query = "SELECT password_hash FROM users WHERE id = %s"
         result = db.execute_query(query, (self.id,), fetch=True, fetchone=True)
-        if not result or not self.check_password(old_password, result['password_hash']):
+        if not result or not User.check_password(old_password, result['password_hash']):
             return False
         
         # Update password
-        new_password_hash = self.hash_password(new_password)
+        new_password_hash = User.hash_password(new_password)
         query = "UPDATE users SET password_hash = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s"
         rows_affected = db.execute_query(query, (new_password_hash, self.id))
         return rows_affected > 0
@@ -183,7 +180,9 @@ class User:
             'department': self.department,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'status': getattr(self, 'status', 'active'),
+            'avatar_url': getattr(self, 'avatar_url', None)
         }
         
         if include_sensitive and hasattr(self, 'password_hash'):

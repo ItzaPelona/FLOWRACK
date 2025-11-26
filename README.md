@@ -17,11 +17,11 @@ A modern, hybrid warehouse management system built with vanilla technologies for
    cd FLOWRACK
    ```
 
-2. **Run the Startup Script**
+2. **Initialize the Project (One-time Setup)**
    
    **On Windows:**
    ```cmd
-   start.bat
+   init.bat
    ```
    
    **On Linux/macOS:**
@@ -30,18 +30,43 @@ A modern, hybrid warehouse management system built with vanilla technologies for
    ./start.sh
    ```
    
-   The startup script will:
+   The initialization script will:
    - Check Python installation
    - Create virtual environment
    - Install dependencies
-   - Set up environment variables
+   - Set up environment variables (.env file)
    - Initialize the database (optional)
-   - Start the application
 
-3. **Access the Application**
+3. **Run the Application**
+   
+   **On Windows:**
+   ```cmd
+   # Development mode (with debug and auto-reload)
+   run.bat dev
+   
+   # Production mode
+   run.bat prod
+   ```
+   
+   **On Linux/macOS:**
+   ```bash
+   ./start.sh
+   ```
+
+4. **Access the Application**
    - Open your browser and go to: `http://localhost:5000`
    - Use default credentials: `ADMIN001` / `admin123`
    - **!!!! Change default passwords immediately after first login**
+
+### Quick Command Reference
+
+**Windows:**
+- First time setup: `init.bat`
+- Run in development: `run.bat dev`
+- Run in production: `run.bat prod`
+
+**Linux/macOS:**
+- Setup and run: `./start.sh`
 
 ## Architecture
 
@@ -209,20 +234,61 @@ The system includes sample data for testing:
 
 ## Troubleshooting
 
+### Database Diagnostic Tool
+
+If you're experiencing login issues or database problems, run the diagnostic tool:
+
+**Windows:**
+```cmd
+check.bat
+```
+
+**Or manually:**
+```cmd
+call venv\Scripts\activate.bat
+python backend\database\check_db.py
+```
+
+This will check:
+- Database connection
+- Users table existence
+- Admin user presence
+- Password hash validation
+- Login functionality
+
 ### Common Issues
 
-1. **Database Connection Error**
+1. **Login Failed / Invalid Credentials**
+   - **Symptom**: Cannot login with ADMIN001/admin123
+   - **Cause**: Database not initialized or password hash mismatch
+   - **Solution**: 
+     ```cmd
+     # Run diagnostic first
+     check.bat
+     
+     # If admin user missing, reinitialize database
+     init.bat
+     # Choose 'y' when asked to initialize database
+     ```
+
+2. **Database Connection Error**
    - Check PostgreSQL is running
    - Verify credentials in `.env` file
    - Ensure database exists
+   - Run `check.bat` to diagnose
 
-2. **Port Already in Use**
+3. **Port Already in Use**
    - Change port in `backend/app.py`
    - Kill existing Flask processes
 
-3. **Dependencies Not Found**
+4. **Dependencies Not Found**
    - Ensure virtual environment is activated
    - Run `pip install -r requirements.txt`
+   - Or run `init.bat` to reinstall everything
+
+5. **Library Version Mismatch**
+   - The project uses `psycopg` (version 3) for database
+   - If you see import errors, run `init.bat` to reinstall dependencies
 
 4. **PWA Not Installing**
    - Check HTTPS (required for PWA)

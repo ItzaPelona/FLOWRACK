@@ -77,7 +77,9 @@ class DatabaseManager:
                     results = []
                     for query, params in queries_and_params:
                         cursor.execute(query, params)
-                        if query.strip().upper().startswith('SELECT'):
+                        # Check if query has RETURNING clause or is a SELECT
+                        query_upper = query.strip().upper()
+                        if 'RETURNING' in query_upper or query_upper.startswith('SELECT'):
                             results.append(cursor.fetchall())
                         else:
                             results.append(cursor.rowcount)

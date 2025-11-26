@@ -25,6 +25,7 @@
     
     <!-- Custom CSS -->
     <link href="/assets/css/style.css" rel="stylesheet">
+    <link href="/assets/css/draggable.css" rel="stylesheet">
 </head>
 <body>
     <!-- Loading Screen -->
@@ -51,31 +52,74 @@
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    <!-- Dashboard - Always visible -->
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="showView('dashboard')">
                             <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
                     </li>
-                    <li class="nav-item user-only">
-                        <a class="nav-link" href="#" onclick="showView('requests')">
-                            <i class="bi bi-clipboard-check"></i> My Requests
+                    
+                    <!-- User Requests Dropdown -->
+                    <li class="nav-item dropdown user-only">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-clipboard-check"></i> Requests
                         </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="showView('requests')">
+                                <i class="bi bi-list-ul"></i> My Requests
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('new-request')">
+                                <i class="bi bi-plus-circle"></i> New Request
+                            </a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item user-only">
-                        <a class="nav-link" href="#" onclick="showView('new-request')">
-                            <i class="bi bi-plus-circle"></i> New Request
+                    
+                    <!-- Operations Dropdown (Operator & Admin) -->
+                    <li class="nav-item dropdown operator-only admin-only">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-truck"></i> Operations
                         </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="showView('qr-scanner')">
+                                <i class="bi bi-qr-code-scan"></i> QR Scanner
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Deliveries</h6></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('pending-deliveries')">
+                                <i class="bi bi-hourglass-split"></i> Pending Deliveries
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('todays-schedule')">
+                                <i class="bi bi-calendar-day"></i> Today's Schedule
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('delivery-history')">
+                                <i class="bi bi-clock-history"></i> Delivery History
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('deliveries')">
+                                <i class="bi bi-truck"></i> All Deliveries
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('inventory')">
+                                <i class="bi bi-box-seam"></i> Inventory
+                            </a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item operator-only admin-only">
-                        <a class="nav-link" href="#" onclick="showView('deliveries')">
-                            <i class="bi bi-truck"></i> Deliveries
+                    
+                    <!-- Admin Dropdown (Admin only) -->
+                    <li class="nav-item dropdown admin-only">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear"></i> Admin
                         </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="showView('pending-users')">
+                                <i class="bi bi-person-check"></i> Pending Users
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('admin-strikes')">
+                                <i class="bi bi-shield-exclamation"></i> Strikes
+                            </a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item operator-only admin-only">
-                        <a class="nav-link" href="#" onclick="showView('inventory')">
-                            <i class="bi bi-box-seam"></i> Inventory
-                        </a>
-                    </li>
+                    
+                    <!-- Debts - Always visible -->
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="showView('debts')">
                             <i class="bi bi-exclamation-triangle"></i> Debts
@@ -86,7 +130,8 @@
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> <span id="user-name">User</span>
+                            <img id="user-avatar" src="" alt="" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover; display: none;">
+                            <i class="bi bi-person-circle" id="user-avatar-icon"></i> <span id="user-name">User</span>
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="#" onclick="showView('profile')">
@@ -133,7 +178,79 @@
                     
                     <div class="text-center mt-3">
                         <small class="text-muted">
-                            Don't have an account? Contact your administrator.
+                            Don't have an account? <a href="#" id="show-register-link" class="text-primary">Register here</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registration View -->
+        <div id="register-view" class="auth-container" style="display: none;">
+            <div class="card auth-card">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-person-plus-fill auth-icon"></i>
+                        <h2>Create Account</h2>
+                        <p class="text-muted">Register for FlowRack Access</p>
+                    </div>
+                    
+                    <form id="register-form">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reg-first-name" class="form-label">First Name *</label>
+                                <input type="text" class="form-control" id="reg-first-name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="reg-last-name" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control" id="reg-last-name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reg-registration-number" class="form-label">Registration Number *</label>
+                            <input type="text" class="form-control" id="reg-registration-number" required>
+                            <div class="form-text">Your employee/student ID</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reg-email" class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="reg-email" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reg-phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="reg-phone">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reg-department" class="form-label">Department</label>
+                            <input type="text" class="form-control" id="reg-department" placeholder="e.g., Engineering, Research">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reg-password" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="reg-password" required minlength="6">
+                            <div class="form-text">At least 6 characters</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reg-confirm-password" class="form-label">Confirm Password *</label>
+                            <input type="password" class="form-control" id="reg-confirm-password" required minlength="6">
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <small><i class="bi bi-info-circle"></i> Your account will be pending approval by an administrator</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-person-plus"></i> Register
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            Already have an account? <a href="#" id="show-login-link" class="text-primary">Login here</a>
                         </small>
                     </div>
                 </div>
@@ -143,7 +260,12 @@
         <!-- Dashboard View -->
         <div id="dashboard-view" class="view-container" style="display: none;">
             <div class="container-fluid">
-                <h1 class="h3 mb-4">Dashboard</h1>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3 mb-0">Dashboard</h1>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="DragDropCards.resetPositions()" title="Reset card positions">
+                        <i class="bi bi-arrow-clockwise"></i> Reset Layout
+                    </button>
+                </div>
                 
                 <!-- User Statistics -->
                 <div class="row mb-4 user-only">
@@ -186,8 +308,8 @@
                 </div>
 
                 <!-- Operator Statistics -->
-                <div class="row mb-4 operator-only admin-only" style="display: none;">
-                    <div class="col-md-3 mb-3">
+                <div class="row mb-4 operator-only admin-only">
+                    <div class="col-3 mb-3">
                         <div class="card stat-card">
                             <div class="card-body text-center">
                                 <i class="bi bi-calendar-check stat-icon text-info"></i>
@@ -196,7 +318,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
+                    <div class="col-3 mb-3">
                         <div class="card stat-card">
                             <div class="card-body text-center">
                                 <i class="bi bi-box-seam stat-icon text-warning"></i>
@@ -205,7 +327,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
+                    <div class="col-3 mb-3">
                         <div class="card stat-card">
                             <div class="card-body text-center">
                                 <i class="bi bi-people stat-icon text-primary"></i>
@@ -214,7 +336,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
+                    <div class="col-3 mb-3">
                         <div class="card stat-card">
                             <div class="card-body text-center">
                                 <i class="bi bi-currency-dollar stat-icon text-danger"></i>
@@ -259,7 +381,7 @@
                                     <button class="btn btn-outline-warning" onclick="showView('debts')">
                                         <i class="bi bi-exclamation-triangle"></i> View Debts
                                     </button>
-                                    <button class="btn btn-outline-info operator-only admin-only" onclick="showView('inventory')" style="display: none;">
+                                    <button class="btn btn-outline-info operator-only admin-only" onclick="showView('inventory')">
                                         <i class="bi bi-box-seam"></i> Manage Inventory
                                     </button>
                                 </div>
@@ -300,11 +422,16 @@
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     
+    <!-- jsQR Library for QR Code Scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    
     <!-- Custom JS -->
+    <script src="/assets/js/qr-scanner.js"></script>
     <script src="/assets/js/app.js"></script>
     <script src="/assets/js/auth.js"></script>
     <script src="/assets/js/api.js"></script>
     <script src="/assets/js/utils.js"></script>
+    <script src="/assets/js/dragdrop.js"></script>
     
     <!-- Service Worker Registration -->
     <script>

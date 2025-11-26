@@ -1,0 +1,62 @@
+/* Drag and Drop Styles */
+
+.stat-card {
+    cursor: move;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.stat-card.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg) scale(0.95);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.stat-card.drag-over {
+    border: 2px dashed var(--primary-color) !important;
+    background-color: rgba(0, 123, 255, 0.1);
+    transform: scale(1.02);
+}
+
+/* Drag handle indicator */
+.stat-card::after {
+    content: '⋮⋮';
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 1.2rem;
+    color: rgba(0, 0, 0, 0.15);
+    letter-spacing: -3px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.stat-card:hover::after {
+    opacity: 0.6;
+}
+
+/* Make card draggable visual feedback */
+.draggable-card {
+    position: relative;
+}
+
+.draggable-card:active {
+    cursor: grabbing;
+}
+
+/* Tooltip for drag instruction */
+.stat-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Animation for swap */
+@keyframes cardSwap {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0); }
+}
+
+.stat-card.swapping {
+    animation: cardSwap 0.3s ease;
+}

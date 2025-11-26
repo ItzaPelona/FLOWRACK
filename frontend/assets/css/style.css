@@ -1,5 +1,26 @@
 /* FlowRack Warehouse Management System - Custom Styles */
 
+/* CRITICAL: Force Bootstrap Grid System to Work */
+.row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    margin-right: -0.75rem;
+    margin-left: -0.75rem;
+}
+
+.col-1, .col-2, .col-3, .col-4, .col-5, .col-6,
+.col-7, .col-8, .col-9, .col-10, .col-11, .col-12,
+.col-md-1, .col-md-2, .col-md-3, .col-md-4, .col-md-5, .col-md-6,
+.col-md-7, .col-md-8, .col-md-9, .col-md-10, .col-md-11, .col-md-12 {
+    flex: 0 0 auto;
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+}
+
+.col-3, .col-md-3 {
+    width: 25% !important;
+}
+
 :root {
     --primary-color: #007bff;
     --secondary-color: #6c757d;
@@ -127,6 +148,12 @@ body {
     margin-bottom: 0;
 }
 
+/* Force row layout for statistics */
+.row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+}
+
 /* Cards */
 .card {
     border: none;
@@ -156,6 +183,22 @@ body {
     border-top: none;
     font-weight: 600;
     color: var(--dark-color);
+}
+
+.table thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.table thead th.sortable:hover {
+    background-color: #e9ecef;
+}
+
+.table thead th.sortable i {
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+    opacity: 0.5;
 }
 
 .table td, .table th {
@@ -328,13 +371,61 @@ body {
 
 /* Role-based visibility */
 .user-only, .operator-only, .admin-only {
-    display: none;
+    display: none !important;
 }
 
-body.role-user .user-only,
-body.role-operator .operator-only,
-body.role-admin .admin-only {
+/* Show for user role */
+body.role-user .user-only {
     display: block !important;
+}
+
+body.role-user .user-only.row {
+    display: flex !important;
+}
+
+body.role-user .user-only.btn,
+body.role-user .user-only.nav-item {
+    display: inline-block !important;
+}
+
+/* Show for operator role */
+body.role-operator .operator-only,
+body.role-operator .user-only {
+    display: block !important;
+}
+
+body.role-operator .operator-only.row,
+body.role-operator .user-only.row {
+    display: flex !important;
+}
+
+body.role-operator .operator-only.btn,
+body.role-operator .user-only.btn,
+body.role-operator .operator-only.nav-item,
+body.role-operator .user-only.nav-item {
+    display: inline-block !important;
+}
+
+/* Show for admin role */
+body.role-admin .admin-only,
+body.role-admin .operator-only,
+body.role-admin .user-only {
+    display: block !important;
+}
+
+body.role-admin .admin-only.row,
+body.role-admin .operator-only.row,
+body.role-admin .user-only.row {
+    display: flex !important;
+}
+
+body.role-admin .admin-only.btn,
+body.role-admin .operator-only.btn,
+body.role-admin .user-only.btn,
+body.role-admin .admin-only.nav-item,
+body.role-admin .operator-only.nav-item,
+body.role-admin .user-only.nav-item {
+    display: inline-block !important;
 }
 
 /* Responsive Design */

@@ -291,6 +291,20 @@ const API = {
         }
         
         return response.json();
+    },
+    
+    // Operator Dashboard APIs
+    async getPendingDeliveries() {
+        return this.request('/requests/pending-deliveries');
+    },
+    
+    async getTodaysSchedule() {
+        return this.request('/requests/todays-schedule');
+    },
+    
+    async getDeliveryHistory(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.request(`/requests/delivery-history${queryParams ? '?' + queryParams : ''}`);
     }
 };
 
