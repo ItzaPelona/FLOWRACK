@@ -62,6 +62,16 @@ def init_schema():
         from backend.database import init_database
         print("Initializing database schema...")
         init_database()
+
+        # Also apply any migration SQL files found in the top-level database/ folder
+        # This provides resilience if migration files were added separately from
+        # the main schema file (e.g. add_qr_and_strikes.sql).
+        try:
+            apply_migrations()
+        except NameError:
+            # apply_migrations defined below; NameError shouldn't happen, but
+            # catch to avoid breaking older versions.
+            pass
         print("Database schema initialized successfully!")
         return True
         
@@ -241,6 +251,42 @@ def create_sample_data():
         
     except Exception as e:
         print(f"Error creating sample data: {e}")
+        return False
+
+
+def apply_migrations():
+    """Apply .sql migration files found in the repository database/ folder.
+
+    This connects to the target database (`DB_NAME`) and executes each .sql
+    file (excluding `schema.sql`) in alphabetical order.
+    """
+    try:
+        db_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'database')
+        target_db = os.getenv('DB_NAME', 'flowrack')
+        # Connect directly to the application database
+        conn = psycopg.connect(host=os.getenv('DB_HOST', 'localhost'), port=os.getenv('DB_PORT', '5432'), user=os.getenv('DB_USER', 'flowrack_user'), password=os.getenv('DB_PASSWORD', 'your_password'), dbname=target_db)
+        with conn:
+            with conn.cursor() as cur:
+                for fname in sorted(os.listdir(db_dir)):
+                    if not fname.lower().endswith('.sql'):
+                        continue
+                    if fname == 'schema.sql':
+                        continue
+                    path = os.path.join(db_dir, fname)
+                    try:
+                        with open(path, 'r', encoding='utf-8') as f:
+                            sql_text = f.read()
+                        if not sql_text.strip():
+                            continue
+                        print(f"Applying migration: {fname}")
+                        cur.execute(sql_text)
+                    except Exception as e:
+                        # Log but continue with other migrations so init doesn't stop on optional migrations
+                        print(f"Warning: failed to apply migration {fname}: {e}")
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error applying migrations: {e}")
         return False
 
 def main():

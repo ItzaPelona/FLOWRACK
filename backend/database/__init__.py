@@ -110,6 +110,22 @@ def init_database():
             with conn:
                 with conn.cursor() as cursor:
                     cursor.execute(schema_sql)
+                    # Apply any additional migration SQL files found in the database folder
+                    migrations_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'database')
+                    for fname in sorted(os.listdir(migrations_dir)):
+                        if not fname.lower().endswith('.sql'):
+                            continue
+                        if fname == 'schema.sql':
+                            continue
+                        migration_path = os.path.join(migrations_dir, fname)
+                        try:
+                            with open(migration_path, 'r', encoding='utf-8') as mf:
+                                migration_sql = mf.read()
+                            if migration_sql.strip():
+                                logging.info(f"Applying migration: {fname}")
+                                cursor.execute(migration_sql)
+                        except Exception as migration_err:
+                            logging.warning(f"Failed to apply migration {fname}: {migration_err}")
             
             logging.info("Database schema initialized successfully")
             return True
