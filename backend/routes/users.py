@@ -552,11 +552,18 @@ def approve_user(user_id):
         if not current_user or current_user.role != 'admin':
             return jsonify({'error': 'Insufficient permissions. Admin access required.'}), 403
         
-        user = User.get_by_id(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
         from backend.database import db
+        
+        # Fetch user directly without is_active filter (pending users may be inactive)
+        user_data = db.execute_query(
+            "SELECT id, registration_number, first_name, last_name, email, phone, role, department, is_active, created_at, updated_at, status, avatar_url FROM users WHERE id = %s",
+            (user_id,),
+            fetch=True,
+            fetchone=True
+        )
+        
+        if not user_data:
+            return jsonify({'error': 'User not found'}), 404
         
         # Update user status to active
         db.execute_query(
@@ -565,7 +572,7 @@ def approve_user(user_id):
         )
         
         return jsonify({
-            'message': f'User {user.registration_number} approved successfully'
+            'message': f'User {user_data["registration_number"]} approved successfully'
         }), 200
         
     except Exception as e:
