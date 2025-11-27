@@ -26,6 +26,11 @@
     <!-- Custom CSS -->
     <link href="/assets/css/style.css" rel="stylesheet">
     <link href="/assets/css/draggable.css" rel="stylesheet">
+    
+    <!-- UI/UX Enhancement CSS -->
+    <link href="/assets/css/dark-mode.css" rel="stylesheet">
+    <link href="/assets/css/global-search.css" rel="stylesheet">
+    <link href="/assets/css/favorites.css" rel="stylesheet">
 </head>
 <body>
     <!-- Loading Screen -->
@@ -101,6 +106,23 @@
                             <li><a class="dropdown-item" href="#" onclick="showView('inventory')">
                                 <i class="bi bi-box-seam"></i> Inventory
                             </a></li>
+                            <li><h6 class="dropdown-header">Inventory Management</h6></li>
+                            <li><a class="dropdown-item" href="/adjustments.html">
+                                <i class="bi bi-arrow-left-right"></i> Stock Adjustments
+                            </a></li>
+                            <li><a class="dropdown-item" href="/suppliers.html">
+                                <i class="bi bi-shop"></i> Suppliers
+                            </a></li>
+                            <li><a class="dropdown-item" href="/low-stock.html">
+                                <i class="bi bi-exclamation-triangle"></i> Low Stock Alerts
+                            </a></li>
+                            <li><a class="dropdown-item" href="/scanner.html">
+                                <i class="bi bi-upc-scan"></i> Barcode Scanner
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/audit.html">
+                                <i class="bi bi-file-text"></i> Audit Trail
+                            </a></li>
                         </ul>
                     </li>
                     
@@ -116,6 +138,31 @@
                             <li><a class="dropdown-item" href="#" onclick="showView('admin-strikes')">
                                 <i class="bi bi-shield-exclamation"></i> Strikes
                             </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/audit.html">
+                                <i class="bi bi-file-text"></i> Audit Trail
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <!-- Analytics Dropdown (Operator & Admin) -->
+                    <li class="nav-item dropdown operator-only admin-only">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-bar-chart"></i> Analytics
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="showView('usage-statistics')">
+                                <i class="bi bi-graph-up"></i> Usage Statistics
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('stock-forecast')">
+                                <i class="bi bi-graph-up-arrow"></i> Stock Forecast
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('late-returns')">
+                                <i class="bi bi-clock-history"></i> Late Return Analytics
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="showView('debt-collection')">
+                                <i class="bi bi-cash-coin"></i> Debt Collection
+                            </a></li>
                         </ul>
                     </li>
                     
@@ -125,9 +172,40 @@
                             <i class="bi bi-exclamation-triangle"></i> Debts
                         </a>
                     </li>
+                    
+                    <!-- Payment Management - Always visible -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="payments.html">
+                            <i class="bi bi-cash-stack"></i> Payments
+                        </a>
+                    </li>
                 </ul>
                 
                 <ul class="navbar-nav">
+                    <!-- Language Toggle -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Change Language">
+                            <i class="bi bi-globe"></i>
+                            <span class="d-none d-lg-inline ms-1" id="current-language">EN</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); window.I18n?.setLanguage('en');">
+                                <i class="bi bi-flag-fill"></i> English
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); window.I18n?.setLanguage('es');">
+                                <i class="bi bi-flag-fill"></i> Español
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <!-- Keyboard Shortcuts Help Button -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="event.preventDefault(); window.KeyboardShortcuts?.showHelp();" title="Keyboard Shortcuts (?)">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="d-none d-lg-inline ms-1">Help</span>
+                        </a>
+                    </li>
+                    
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <img id="user-avatar" src="" alt="" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover; display: none;">
@@ -447,5 +525,19 @@
             });
         }
     </script>
+    <!-- PWA Installer -->
+    <link rel="stylesheet" href="assets/css/pwa-installer.css">
+    <script src="assets/js/pwa-installer.js"></script>
+
+    <!-- Touch Gestures -->
+    <link rel="stylesheet" href="assets/css/touch-gestures.css">
+    <script src="assets/js/touch-gestures.js"></script>
+    
+    <!-- UI/UX Enhancements -->
+    <script src="/assets/js/theme-manager.js"></script>
+    <script src="/assets/js/i18n.js"></script>
+    <script src="/assets/js/global-search.js"></script>
+    <script src="/assets/js/keyboard-shortcuts.js"></script>
+    <script src="/assets/js/favorites-manager.js"></script>
 </body>
 </html>

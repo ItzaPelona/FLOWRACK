@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Trail - FlowRack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .audit-filters {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        
+        .audit-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card-audit {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card-audit h3 {
+            font-size: 2rem;
+            margin: 0;
+            color: #2563eb;
+        }
+        
+        .stat-card-audit p {
+            margin: 0.5rem 0 0 0;
+            color: #64748b;
+        }
+        
+        .audit-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .action-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .action-create { background: #dcfce7; color: #16a34a; }
+        .action-update { background: #dbeafe; color: #2563eb; }
+        .action-delete { background: #fee2e2; color: #dc2626; }
+        .action-approve { background: #d1fae5; color: #059669; }
+        .action-reject { background: #ffe4e6; color: #e11d48; }
+        .action-login { background: #e0e7ff; color: #4f46e5; }
+        .action-logout { background: #f3f4f6; color: #6b7280; }
+        .action-status_change { background: #fef3c7; color: #d97706; }
+        .action-stock_adjustment { background: #fbcfe8; color: #db2777; }
+        
+        .entity-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #475569;
+        }
+        
+        .tab-content-audit {
+            padding: 1.5rem 0;
+        }
+        
+        .export-btn {
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-box-seam"></i> FlowRack
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard.html">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/audit.html">Audit Trail</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="logoutBtn">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-file-text"></i> Audit Trail & Activity Logs</h2>
+            <div class="d-flex gap-2">
+                <button class="btn btn-success export-btn" onclick="exportLogs('activity')">
+                    <i class="bi bi-download"></i> Export Activity Logs
+                </button>
+                <button class="btn btn-success export-btn" onclick="exportLogs('stock')">
+                    <i class="bi bi-download"></i> Export Stock Movements
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="audit-stats" id="auditStats">
+            <div class="stat-card-audit">
+                <h3 id="totalLogs">0</h3>
+                <p>Total Activity Logs</p>
+            </div>
+            <div class="stat-card-audit">
+                <h3 id="last24h">0</h3>
+                <p>Last 24 Hours</p>
+            </div>
+            <div class="stat-card-audit">
+                <h3 id="totalMovements">0</h3>
+                <p>Stock Movements</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" id="auditTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab">
+                    <i class="bi bi-activity"></i> Activity Logs
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="stock-tab" data-bs-toggle="tab" data-bs-target="#stock" type="button" role="tab">
+                    <i class="bi bi-box-arrow-in-down"></i> Stock Movements
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab">
+                    <i class="bi bi-clock-history"></i> Request History
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content tab-content-audit" id="auditTabContent">
+            <!-- Activity Logs Tab -->
+            <div class="tab-pane fade show active" id="activity" role="tabpanel">
+                <!-- Filters -->
+                <div class="audit-filters">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Action Type</label>
+                            <select class="form-select" id="filterActionType">
+                                <option value="">All Actions</option>
+                                <option value="create">Create</option>
+                                <option value="update">Update</option>
+                                <option value="delete">Delete</option>
+                                <option value="approve">Approve</option>
+                                <option value="reject">Reject</option>
+                                <option value="login">Login</option>
+                                <option value="logout">Logout</option>
+                                <option value="status_change">Status Change</option>
+                                <option value="stock_adjustment">Stock Adjustment</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Entity Type</label>
+                            <select class="form-select" id="filterEntityType">
+                                <option value="">All Entities</option>
+                                <option value="user">User</option>
+                                <option value="product">Product</option>
+                                <option value="request">Request</option>
+                                <option value="adjustment">Adjustment</option>
+                                <option value="supplier">Supplier</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="filterDateFrom">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="filterDateTo">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="loadActivityLogs()">
+                                <i class="bi bi-funnel"></i> Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Logs Table -->
+                <div class="audit-table">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Entity</th>
+                                    <th>Description</th>
+                                    <th>IP Address</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activityLogsTable">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="bi bi-hourglass-split"></i> Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-3" id="activityPagination"></div>
+                </div>
+            </div>
+
+            <!-- Stock Movements Tab -->
+            <div class="tab-pane fade" id="stock" role="tabpanel">
+                <!-- Filters -->
+                <div class="audit-filters">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Movement Type</label>
+                            <select class="form-select" id="filterMovementType">
+                                <option value="">All Types</option>
+                                <option value="receipt">Receipt</option>
+                                <option value="issue">Issue</option>
+                                <option value="adjustment">Adjustment</option>
+                                <option value="return">Return</option>
+                                <option value="damage">Damage</option>
+                                <option value="loss">Loss</option>
+                                <option value="transfer">Transfer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Product</label>
+                            <input type="text" class="form-control" id="filterProductSearch" placeholder="Search product...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="filterStockDateFrom">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="filterStockDateTo">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="loadStockMovements()">
+                                <i class="bi bi-funnel"></i> Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Movements Table -->
+                <div class="audit-table">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Product</th>
+                                    <th>Type</th>
+                                    <th>Change</th>
+                                    <th>Before</th>
+                                    <th>After</th>
+                                    <th>Reason</th>
+                                    <th>Adjusted By</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockMovementsTable">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="bi bi-hourglass-split"></i> Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-3" id="stockPagination"></div>
+                </div>
+            </div>
+
+            <!-- Request History Tab -->
+            <div class="tab-pane fade" id="requests" role="tabpanel">
+                <div class="audit-filters">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Request Number</label>
+                            <input type="text" class="form-control" id="requestNumberInput" placeholder="Enter request number...">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="loadRequestHistory()">
+                                <i class="bi bi-search"></i> Search History
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="audit-table" id="requestHistorySection" style="display: none;">
+                    <div class="p-3 border-bottom">
+                        <h5 id="requestHistoryTitle">Request History</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Action</th>
+                                    <th>Description</th>
+                                    <th>Performed By</th>
+                                    <th>Role</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestHistoryTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script>
+        let currentPage = 1;
+        const itemsPerPage = 50;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadStats();
+            loadActivityLogs();
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('flowrack_token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Check if user has permission (admin/operator only)
+            const user = JSON.parse(localStorage.getItem('flowrack_user') || '{}');
+            if (!user.role || !['admin', 'operator'].includes(user.role)) {
+                alert('Access denied. Audit trail is only available for administrators and operators.');
+                window.location.href = '/';
+                return;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await apiRequest('/api/audit/stats');
+                document.getElementById('totalLogs').textContent = response.total_logs.toLocaleString();
+                document.getElementById('last24h').textContent = response.last_24_hours.toLocaleString();
+                
+                // Calculate total stock movements
+                const stockResponse = await apiRequest('/api/audit/stock-movements?limit=1');
+                document.getElementById('totalMovements').textContent = stockResponse.total.toLocaleString();
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadActivityLogs(page = 1) {
+            try {
+                const actionType = document.getElementById('filterActionType').value;
+                const entityType = document.getElementById('filterEntityType').value;
+                const dateFrom = document.getElementById('filterDateFrom').value;
+                const dateTo = document.getElementById('filterDateTo').value;
+
+                const params = new URLSearchParams({
+                    limit: itemsPerPage,
+                    offset: (page - 1) * itemsPerPage
+                });
+
+                if (actionType) params.append('action_type', actionType);
+                if (entityType) params.append('entity_type', entityType);
+                if (dateFrom) params.append('date_from', dateFrom);
+                if (dateTo) params.append('date_to', dateTo);
+
+                const response = await apiRequest(`/api/audit/activity?${params}`);
+                
+                const tbody = document.getElementById('activityLogsTable');
+                if (response.logs.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox"></i> No activity logs found
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = response.logs.map(log => `
+                    <tr>
+                        <td>${new Date(log.created_at).toLocaleString()}</td>
+                        <td>
+                            ${log.user_name || 'System'}<br>
+                            <small class="text-muted">${log.registration_number || ''}</small>
+                        </td>
+                        <td>
+                            <span class="action-badge action-${log.action_type}">
+                                ${log.action_type.replace('_', ' ')}
+                            </span>
+                        </td>
+                        <td>
+                            ${log.entity_type ? `<span class="entity-badge">${log.entity_type}</span>` : '-'}
+                        </td>
+                        <td>${log.description}</td>
+                        <td><small>${log.ip_address || '-'}</small></td>
+                    </tr>
+                `).join('');
+
+                renderPagination('activityPagination', response.total, page, loadActivityLogs);
+            } catch (error) {
+                console.error('Error loading activity logs:', error);
+                showError('Failed to load activity logs');
+            }
+        }
+
+        async function loadStockMovements(page = 1) {
+            try {
+                const movementType = document.getElementById('filterMovementType').value;
+                const dateFrom = document.getElementById('filterStockDateFrom').value;
+                const dateTo = document.getElementById('filterStockDateTo').value;
+
+                const params = new URLSearchParams({
+                    limit: itemsPerPage,
+                    offset: (page - 1) * itemsPerPage
+                });
+
+                if (movementType) params.append('movement_type', movementType);
+                if (dateFrom) params.append('date_from', dateFrom);
+                if (dateTo) params.append('date_to', dateTo);
+
+                const response = await apiRequest(`/api/audit/stock-movements?${params}`);
+                
+                const tbody = document.getElementById('stockMovementsTable');
+                if (response.movements.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox"></i> No stock movements found
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = response.movements.map(m => {
+                    const change = parseFloat(m.quantity_change);
+                    const changeClass = change > 0 ? 'text-success' : 'text-danger';
+                    const changeIcon = change > 0 ? '▲' : '▼';
+                    
+                    return `
+                        <tr>
+                            <td>${new Date(m.created_at).toLocaleString()}</td>
+                            <td>
+                                ${m.product_name}<br>
+                                <small class="text-muted">${m.product_code}</small>
+                            </td>
+                            <td>
+                                <span class="action-badge action-${m.movement_type}">
+                                    ${m.movement_type}
+                                </span>
+                            </td>
+                            <td class="${changeClass}">
+                                <strong>${changeIcon} ${Math.abs(change)}</strong>
+                            </td>
+                            <td>${m.quantity_before}</td>
+                            <td><strong>${m.quantity_after}</strong></td>
+                            <td><small>${m.reason || '-'}</small></td>
+                            <td><small>${m.adjusted_by_name || '-'}</small></td>
+                        </tr>
+                    `;
+                }).join('');
+
+                renderPagination('stockPagination', response.total, page, loadStockMovements);
+            } catch (error) {
+                console.error('Error loading stock movements:', error);
+                showError('Failed to load stock movements');
+            }
+        }
+
+        async function loadRequestHistory() {
+            const requestNumber = document.getElementById('requestNumberInput').value.trim();
+            if (!requestNumber) {
+                alert('Please enter a request number');
+                return;
+            }
+
+            try {
+                // First, get the request ID
+                const requestsResponse = await apiRequest(`/api/requests?request_number=${requestNumber}`);
+                if (!requestsResponse.requests || requestsResponse.requests.length === 0) {
+                    alert('Request not found');
+                    return;
+                }
+
+                const requestId = requestsResponse.requests[0].id;
+                const response = await apiRequest(`/api/audit/request-history/${requestId}`);
+                
+                document.getElementById('requestHistoryTitle').textContent = `Request History: ${requestNumber}`;
+                document.getElementById('requestHistorySection').style.display = 'block';
+
+                const tbody = document.getElementById('requestHistoryTable');
+                if (response.history.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox"></i> No history found
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = response.history.map(h => `
+                    <tr>
+                        <td>${new Date(h.created_at).toLocaleString()}</td>
+                        <td>
+                            <span class="action-badge action-${h.action_type}">
+                                ${h.action_type.replace('_', ' ')}
+                            </span>
+                        </td>
+                        <td>${h.description}</td>
+                        <td>${h.performed_by || 'System'}</td>
+                        <td><span class="entity-badge">${h.performed_by_role || '-'}</span></td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading request history:', error);
+                showError('Failed to load request history');
+            }
+        }
+
+        async function exportLogs(type) {
+            try {
+                const dateFrom = document.getElementById(type === 'activity' ? 'filterDateFrom' : 'filterStockDateFrom').value;
+                const dateTo = document.getElementById(type === 'activity' ? 'filterDateTo' : 'filterStockDateTo').value;
+
+                const params = new URLSearchParams();
+                if (dateFrom) params.append('date_from', dateFrom);
+                if (dateTo) params.append('date_to', dateTo);
+                params.append('format', 'csv');
+
+                const endpoint = type === 'activity' ? '/audit/export/activity' : '/audit/export/stock-movements';
+                const token = localStorage.getItem('flowrack_token');
+
+                // Download file
+                const response = await fetch(`${window.location.origin}/api${endpoint}?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Export failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${type}_logs_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showSuccess('Export completed successfully');
+            } catch (error) {
+                console.error('Error exporting logs:', error);
+                showError('Failed to export logs');
+            }
+        }
+
+        function renderPagination(containerId, total, currentPage, callback) {
+            const totalPages = Math.ceil(total / itemsPerPage);
+            const container = document.getElementById(containerId);
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '<nav><ul class="pagination justify-content-center mb-0">';
+            
+            // Previous button
+            html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); ${callback.name}(${currentPage - 1})">Previous</a>
+                </li>
+            `;
+            
+            // Page numbers
+            for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+                html += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); ${callback.name}(${i})">${i}</a>
+                    </li>
+                `;
+            }
+            
+            // Next button
+            html += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); ${callback.name}(${currentPage + 1})">Next</a>
+                </li>
+            `;
+            
+            html += '</ul></nav>';
+            container.innerHTML = html;
+        }
+
+        function showSuccess(message) {
+            // Simple alert for now
+            alert(message);
+        }
+
+        function showError(message) {
+            alert('Error: ' + message);
+        }
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            localStorage.clear();
+            window.location.href = '/';
+        });
+    </script>
+    <!-- PWA Installer -->
+    <link rel="stylesheet" href="assets/css/pwa-installer.css">
+    <script src="assets/js/pwa-installer.js"></script>
+
+    <!-- Touch Gestures -->
+    <link rel="stylesheet" href="assets/css/touch-gestures.css">
+    <script src="assets/js/touch-gestures.js"></script>
+</body>
+</html>

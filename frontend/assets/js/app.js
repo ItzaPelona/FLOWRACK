@@ -121,18 +121,31 @@ const App = {
     // Check for existing authentication
     async checkAuth() {
         const token = localStorage.getItem('flowrack_token');
+        const savedUser = localStorage.getItem('flowrack_user');
         
         if (token) {
+            // Load user from localStorage first for faster UI display
+            if (savedUser) {
+                try {
+                    this.currentUser = JSON.parse(savedUser);
+                } catch (e) {
+                    console.error('Failed to parse saved user data:', e);
+                }
+            }
+            
             try {
                 const response = await API.verifyToken();
                 if (response.valid) {
                     this.currentUser = response.user;
+                    // Update localStorage with fresh user data
+                    localStorage.setItem('flowrack_user', JSON.stringify(response.user));
                     this.showAuthenticatedView();
                 } else {
                     this.logout();
                 }
             } catch (error) {
                 console.error('Auth check failed:', error);
+                // If token verification fails but we have saved user data, show login
                 this.logout();
             }
         } else {
@@ -173,6 +186,7 @@ const App = {
             
             if (response.access_token) {
                 localStorage.setItem('flowrack_token', response.access_token);
+                localStorage.setItem('flowrack_user', JSON.stringify(response.user));
                 this.currentUser = response.user;
                 this.showAuthenticatedView();
                 this.showNotification('Login successful!', 'success');
@@ -389,6 +403,26 @@ const App = {
             case 'delivery-history':
                 dynamicContent.style.display = 'block';
                 this.loadDeliveryHistoryView();
+                break;
+                
+            case 'usage-statistics':
+                dynamicContent.style.display = 'block';
+                this.loadUsageStatisticsView();
+                break;
+                
+            case 'stock-forecast':
+                dynamicContent.style.display = 'block';
+                this.loadStockForecastView();
+                break;
+                
+            case 'late-returns':
+                dynamicContent.style.display = 'block';
+                this.loadLateReturnAnalyticsView();
+                break;
+                
+            case 'debt-collection':
+                dynamicContent.style.display = 'block';
+                this.loadDebtCollectionView();
                 break;
         }
         
@@ -3697,7 +3731,12 @@ const App = {
     logout() {
         // Clear authentication
         localStorage.removeItem('flowrack_token');
+        localStorage.removeItem('flowrack_user');
+        localStorage.removeItem('flowrack_preferences');
         this.currentUser = null;
+        
+        // Clear all cached data
+        this.clearAllData();
         
         // Reset UI
         document.body.className = '';
@@ -3711,6 +3750,51 @@ const App = {
         }
         
         this.showNotification('Logged out successfully', 'info');
+    },
+    
+    // Clear all cached data from DOM
+    clearAllData() {
+        // Clear recent activity
+        const recentActivity = document.getElementById('recent-activity');
+        if (recentActivity) {
+            recentActivity.innerHTML = '';
+        }
+        
+        // Clear dashboard stats
+        const dashboardStats = document.querySelectorAll('.stat-value, .stat-card h3, .stat-card p');
+        dashboardStats.forEach(stat => {
+            if (stat.classList.contains('stat-value') || stat.tagName === 'H3') {
+                stat.textContent = '0';
+            }
+        });
+        
+        // Clear all table bodies
+        const tableBodies = document.querySelectorAll('tbody');
+        tableBodies.forEach(tbody => {
+            tbody.innerHTML = '';
+        });
+        
+        // Clear all lists
+        const lists = document.querySelectorAll('.list-group, .activity-list, .request-list');
+        lists.forEach(list => {
+            list.innerHTML = '';
+        });
+        
+        // Clear any charts if they exist
+        if (window.charts) {
+            Object.values(window.charts).forEach(chart => {
+                if (chart && chart.destroy) {
+                    chart.destroy();
+                }
+            });
+            window.charts = {};
+        }
+        
+        // Clear user-specific elements
+        const userElements = document.querySelectorAll('[data-user-content]');
+        userElements.forEach(el => {
+            el.innerHTML = '';
+        });
     },
     
     // Operator Dashboard Views
@@ -4275,6 +4359,781 @@ const App = {
             'rejected': 'danger'
         };
         return colors[status] || 'secondary';
+    },
+    
+    // ==================== Analytics Views ====================
+    
+    async loadUsageStatisticsView() {
+        const content = document.getElementById('dynamic-content');
+        content.innerHTML = `
+            <div class="container-fluid py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-graph-up"></i> Usage Statistics</h2>
+                    <div>
+                        <select class="form-select" id="stats-period" onchange="App.loadUsageStatisticsView()">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30" selected>Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                            <option value="365">Last Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="stats-loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3">Loading analytics...</p>
+                </div>
+                <div id="stats-content" style="display: none;"></div>
+            </div>
+        `;
+        
+        try {
+            const days = document.getElementById('stats-period')?.value || 30;
+            const data = await API.getUsageStatistics({ days });
+            
+            document.getElementById('stats-loading').style.display = 'none';
+            document.getElementById('stats-content').style.display = 'block';
+            document.getElementById('stats-content').innerHTML = `
+                <!-- Overall Stats Cards -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-clipboard-check text-primary fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.total_requests}</h3>
+                                <p class="text-muted mb-0">Total Requests</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-people text-success fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.active_users}</h3>
+                                <p class="text-muted mb-0">Active Users</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-box-seam text-info fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.products_used}</h3>
+                                <p class="text-muted mb-0">Products Used</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-calendar-range text-warning fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.avg_loan_duration_days}</h3>
+                                <p class="text-muted mb-0">Avg Loan Days</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Row -->
+                <div class="row g-4 mb-4">
+                    <!-- Most Requested Items -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-trophy"></i> Top 10 Most Requested Items</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Product</th>
+                                                <th>Category</th>
+                                                <th>Requests</th>
+                                                <th>Total Qty</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.most_requested_items.length === 0 ? `
+                                                <tr><td colspan="5" class="text-center text-muted">No data available</td></tr>
+                                            ` : data.most_requested_items.map((item, idx) => `
+                                                <tr>
+                                                    <td><strong>${idx + 1}</strong></td>
+                                                    <td>${item.name}</td>
+                                                    <td><span class="badge bg-secondary">${item.category}</span></td>
+                                                    <td><span class="badge bg-primary">${item.request_count}</span></td>
+                                                    <td>${item.total_quantity.toFixed(1)}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Category Breakdown -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Category Breakdown</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Category</th>
+                                                <th>Requests</th>
+                                                <th>Total Qty</th>
+                                                <th>%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.category_breakdown.length === 0 ? `
+                                                <tr><td colspan="4" class="text-center text-muted">No data available</td></tr>
+                                            ` : data.category_breakdown.map(cat => {
+                                                const percentage = data.overall_stats.total_requests > 0 
+                                                    ? (cat.request_count / data.overall_stats.total_requests * 100).toFixed(1)
+                                                    : '0.0';
+                                                return `
+                                                    <tr>
+                                                        <td>${cat.category}</td>
+                                                        <td>${cat.request_count}</td>
+                                                        <td>${cat.total_quantity.toFixed(1)}</td>
+                                                        <td>
+                                                            <div class="progress" style="height: 20px;">
+                                                                <div class="progress-bar" role="progressbar" style="width: ${percentage}%">
+                                                                    ${percentage}%
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Time Distribution Row -->
+                <div class="row g-4 mb-4">
+                    <!-- Popular Departments -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-building"></i> Most Active Departments</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Department</th>
+                                                <th>Requests</th>
+                                                <th>Active Users</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.popular_departments.length === 0 ? `
+                                                <tr><td colspan="3" class="text-center text-muted">No data available</td></tr>
+                                            ` : data.popular_departments.map(dept => `
+                                                <tr>
+                                                    <td>${dept.department}</td>
+                                                    <td><span class="badge bg-primary">${dept.request_count}</span></td>
+                                                    <td><span class="badge bg-success">${dept.active_users}</span></td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Busiest Times -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-clock"></i> Request Distribution by Hour</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Hour</th>
+                                                <th>Requests</th>
+                                                <th>Activity</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.hourly_distribution.length === 0 ? `
+                                                <tr><td colspan="3" class="text-center text-muted">No data available</td></tr>
+                                            ` : data.hourly_distribution.sort((a, b) => b.count - a.count).slice(0, 10).map(hour => {
+                                                const maxCount = Math.max(...data.hourly_distribution.map(h => h.count), 1);
+                                                const percentage = maxCount > 0 ? (hour.count / maxCount * 100).toFixed(0) : '0';
+                                                return `
+                                                    <tr>
+                                                        <td><strong>${hour.hour}:00</strong></td>
+                                                        <td>${hour.count}</td>
+                                                        <td>
+                                                            <div class="progress" style="height: 20px;">
+                                                                <div class="progress-bar bg-info" style="width: ${percentage}%">
+                                                                    ${percentage}%
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Day of Week Distribution -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-calendar-week"></i> Requests by Day of Week</h5>
+                    </div>
+                    <div class="card-body">
+                        ${data.daily_distribution.length === 0 ? `
+                            <p class="text-center text-muted">No data available</p>
+                        ` : `
+                        <div class="row text-center">
+                            ${data.daily_distribution.map(day => {
+                                const maxCount = Math.max(...data.daily_distribution.map(d => d.count), 1);
+                                const height = maxCount > 0 ? (day.count / maxCount * 200).toFixed(0) : '0';
+                                return `
+                                    <div class="col">
+                                        <div class="mb-2">
+                                            <div class="bg-primary rounded" style="height: ${height}px; width: 40px; margin: 0 auto;"></div>
+                                        </div>
+                                        <strong>${day.count}</strong>
+                                        <div class="text-muted small">${day.day_name}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('stats-loading').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Failed to load statistics: ${error.message}
+                </div>
+            `;
+        }
+    },
+    
+    async loadStockForecastView() {
+        const content = document.getElementById('dynamic-content');
+        content.innerHTML = `
+            <div class="container-fluid py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-graph-up-arrow"></i> Stock Forecast</h2>
+                    <div>
+                        <select class="form-select" id="forecast-period" onchange="App.loadStockForecastView()">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30" selected>Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="forecast-loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3">Analyzing stock levels...</p>
+                </div>
+                <div id="forecast-content" style="display: none;"></div>
+            </div>
+        `;
+        
+        try {
+            const days = document.getElementById('forecast-period')?.value || 30;
+            const data = await API.getStockForecast({ days });
+            
+            document.getElementById('forecast-loading').style.display = 'none';
+            document.getElementById('forecast-content').style.display = 'block';
+            document.getElementById('forecast-content').innerHTML = `
+                <!-- Summary Cards -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <i class="bi bi-exclamation-triangle text-danger fs-1"></i>
+                                <h3 class="mt-2">${data.summary.critical}</h3>
+                                <p class="text-danger mb-0"><strong>Critical</strong></p>
+                                <small class="text-muted">At or below minimum</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <i class="bi bi-exclamation-circle text-warning fs-1"></i>
+                                <h3 class="mt-2">${data.summary.warning}</h3>
+                                <p class="text-warning mb-0"><strong>Warning</strong></p>
+                                <small class="text-muted">≤ 7 days to minimum</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <i class="bi bi-info-circle text-info fs-1"></i>
+                                <h3 class="mt-2">${data.summary.attention}</h3>
+                                <p class="text-info mb-0"><strong>Attention</strong></p>
+                                <small class="text-muted">8-14 days to minimum</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <i class="bi bi-check-circle text-success fs-1"></i>
+                                <h3 class="mt-2">${data.summary.healthy}</h3>
+                                <p class="text-success mb-0"><strong>Healthy</strong></p>
+                                <small class="text-muted">> 14 days to minimum</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Forecast Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> Stock Forecast Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Location</th>
+                                        <th>Current Stock</th>
+                                        <th>Min Stock</th>
+                                        <th>Daily Usage</th>
+                                        <th>Days to Min</th>
+                                        <th>Days to Empty</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.forecasts.map(item => {
+                                        const statusConfig = {
+                                            'critical': { icon: 'exclamation-triangle', color: 'danger' },
+                                            'warning': { icon: 'exclamation-circle', color: 'warning' },
+                                            'attention': { icon: 'info-circle', color: 'info' },
+                                            'healthy': { icon: 'check-circle', color: 'success' }
+                                        };
+                                        const config = statusConfig[item.status];
+                                        return `
+                                            <tr>
+                                                <td>
+                                                    <i class="bi bi-${config.icon} text-${config.color} fs-5"></i>
+                                                </td>
+                                                <td><strong>${item.name}</strong></td>
+                                                <td><span class="badge bg-secondary">${item.category || 'N/A'}</span></td>
+                                                <td>${item.location || 'N/A'}</td>
+                                                <td>
+                                                    <span class="badge bg-${item.current_stock <= item.minimum_stock ? 'danger' : 'primary'}">
+                                                        ${item.current_stock.toFixed(1)}
+                                                    </span>
+                                                </td>
+                                                <td>${item.minimum_stock.toFixed(1)}</td>
+                                                <td>${item.daily_usage_rate.toFixed(2)}/day</td>
+                                                <td>
+                                                    ${item.days_until_minimum !== null ? 
+                                                        `<strong class="text-${config.color}">${item.days_until_minimum.toFixed(1)} days</strong>` : 
+                                                        '<span class="text-muted">-</span>'}
+                                                </td>
+                                                <td>
+                                                    ${item.days_until_empty !== null ? 
+                                                        `${item.days_until_empty.toFixed(1)} days` : 
+                                                        '<span class="text-muted">-</span>'}
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('forecast-loading').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Failed to load forecast: ${error.message}
+                </div>
+            `;
+        }
+    },
+    
+    async loadLateReturnAnalyticsView() {
+        const content = document.getElementById('dynamic-content');
+        content.innerHTML = `
+            <div class="container-fluid py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-clock-history"></i> Late Return Analytics</h2>
+                    <div>
+                        <select class="form-select" id="late-period" onchange="App.loadLateReturnAnalyticsView()">
+                            <option value="30">Last 30 Days</option>
+                            <option value="90" selected>Last 90 Days</option>
+                            <option value="180">Last 6 Months</option>
+                            <option value="365">Last Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="late-loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3">Analyzing late returns...</p>
+                </div>
+                <div id="late-content" style="display: none;"></div>
+            </div>
+        `;
+        
+        try {
+            const days = document.getElementById('late-period')?.value || 90;
+            const data = await API.getLateReturnAnalytics({ days });
+            
+            document.getElementById('late-loading').style.display = 'none';
+            document.getElementById('late-content').style.display = 'block';
+            document.getElementById('late-content').innerHTML = `
+                <!-- Summary Cards -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-x-circle text-danger fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.total_late_returns}</h3>
+                                <p class="text-muted mb-0">Total Late Returns</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-people text-warning fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.users_with_late_returns}</h3>
+                                <p class="text-muted mb-0">Users with Late Returns</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-calendar-x text-info fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.avg_days_late}</h3>
+                                <p class="text-muted mb-0">Avg Days Late</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-arrow-up-circle text-danger fs-1"></i>
+                                <h3 class="mt-2">${data.overall_stats.max_days_late}</h3>
+                                <p class="text-muted mb-0">Max Days Late</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-4">
+                    <!-- Top Late Users -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-person-x"></i> Users with Most Late Returns</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Department</th>
+                                                <th>Late Returns</th>
+                                                <th>Avg Days Late</th>
+                                                <th>Strikes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.top_late_users.length === 0 ? `
+                                                <tr><td colspan="5" class="text-center text-muted">No late returns found</td></tr>
+                                            ` : data.top_late_users.map(user => `
+                                                <tr>
+                                                    <td>
+                                                        <strong>${user.registration_number}</strong><br>
+                                                        <small class="text-muted">${user.name}</small>
+                                                    </td>
+                                                    <td>${user.department || 'N/A'}</td>
+                                                    <td><span class="badge bg-danger">${user.late_return_count}</span></td>
+                                                    <td>${user.avg_days_late.toFixed(1)} days</td>
+                                                    <td><span class="badge bg-warning">${user.strikes}</span></td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Departments -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-building"></i> Departments with Late Returns</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Department</th>
+                                                <th>Late Returns</th>
+                                                <th>Users</th>
+                                                <th>Avg Days Late</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.departments.length === 0 ? `
+                                                <tr><td colspan="4" class="text-center text-muted">No data available</td></tr>
+                                            ` : data.departments.map(dept => `
+                                                <tr>
+                                                    <td><strong>${dept.department}</strong></td>
+                                                    <td><span class="badge bg-danger">${dept.late_return_count}</span></td>
+                                                    <td><span class="badge bg-secondary">${dept.users_with_late_returns}</span></td>
+                                                    <td>${dept.avg_days_late.toFixed(1)} days</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('late-loading').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Failed to load analytics: ${error.message}
+                </div>
+            `;
+        }
+    },
+    
+    async loadDebtCollectionView() {
+        const content = document.getElementById('dynamic-content');
+        content.innerHTML = `
+            <div class="container-fluid py-4">
+                <h2 class="mb-4"><i class="bi bi-cash-coin"></i> Debt Collection Dashboard</h2>
+                <div id="debt-loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3">Loading debt data...</p>
+                </div>
+                <div id="debt-content" style="display: none;"></div>
+            </div>
+        `;
+        
+        try {
+            const data = await API.getDebtCollectionDashboard();
+            
+            document.getElementById('debt-loading').style.display = 'none';
+            document.getElementById('debt-content').style.display = 'block';
+            document.getElementById('debt-content').innerHTML = `
+                <!-- Summary Cards -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card border-danger">
+                            <div class="card-body">
+                                <h6 class="text-danger">Pending Debts</h6>
+                                <h3>$${data.overall_stats.pending.amount.toFixed(2)}</h3>
+                                <p class="text-muted mb-0">${data.overall_stats.pending.count} items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-success">
+                            <div class="card-body">
+                                <h6 class="text-success">Paid Debts</h6>
+                                <h3>$${data.overall_stats.paid.amount.toFixed(2)}</h3>
+                                <p class="text-muted mb-0">${data.overall_stats.paid.count} items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-info">
+                            <div class="card-body">
+                                <h6 class="text-info">Waived Debts</h6>
+                                <h3>$${data.overall_stats.waived.amount.toFixed(2)}</h3>
+                                <p class="text-muted mb-0">${data.overall_stats.waived.count} items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-warning">
+                            <div class="card-body">
+                                <h6 class="text-warning">Disputed Debts</h6>
+                                <h3>$${data.overall_stats.disputed.amount.toFixed(2)}</h3>
+                                <p class="text-muted mb-0">${data.overall_stats.disputed.count} items</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-4 mb-4">
+                    <!-- Debts by User -->
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-people"></i> Outstanding Debts by User</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Department</th>
+                                                <th>Items</th>
+                                                <th>Total Debt</th>
+                                                <th>Contact</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.debts_by_user.length === 0 ? `
+                                                <tr><td colspan="5" class="text-center text-success">No outstanding debts!</td></tr>
+                                            ` : data.debts_by_user.map(user => `
+                                                <tr>
+                                                    <td>
+                                                        <strong>${user.registration_number}</strong><br>
+                                                        <small class="text-muted">${user.name}</small>
+                                                    </td>
+                                                    <td>${user.department || 'N/A'}</td>
+                                                    <td><span class="badge bg-warning">${user.debt_count}</span></td>
+                                                    <td><strong class="text-danger">$${user.total_debt.toFixed(2)}</strong></td>
+                                                    <td>
+                                                        <small>${user.email || 'N/A'}</small><br>
+                                                        <small>${user.phone || 'N/A'}</small>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Debts by Type and Aging -->
+                    <div class="col-lg-6">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-tag"></i> Debts by Type</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        ${data.debts_by_type.map(type => `
+                                            <tr>
+                                                <td><strong>${type.debt_type.toUpperCase()}</strong></td>
+                                                <td><span class="badge bg-secondary">${type.count}</span></td>
+                                                <td class="text-end"><strong>$${type.total_amount.toFixed(2)}</strong></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-calendar-range"></i> Aging Analysis</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        ${data.aging_analysis.map(age => `
+                                            <tr>
+                                                <td><strong>${age.age_group}</strong></td>
+                                                <td><span class="badge bg-warning">${age.count}</span></td>
+                                                <td class="text-end"><strong>$${age.total_amount.toFixed(2)}</strong></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Debt Activity</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>User</th>
+                                        <th>Product</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Resolved By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.recent_activity.map(debt => `
+                                        <tr>
+                                            <td><small>${new Date(debt.created_at).toLocaleDateString()}</small></td>
+                                            <td><small>${debt.user}</small></td>
+                                            <td><small>${debt.product_name || 'N/A'}</small></td>
+                                            <td><span class="badge bg-secondary">${debt.debt_type}</span></td>
+                                            <td><strong>$${debt.total_amount.toFixed(2)}</strong></td>
+                                            <td>
+                                                <span class="badge bg-${
+                                                    debt.status === 'paid' ? 'success' :
+                                                    debt.status === 'pending' ? 'warning' :
+                                                    debt.status === 'disputed' ? 'danger' : 'info'
+                                                }">
+                                                    ${debt.status}
+                                                </span>
+                                            </td>
+                                            <td><small>${debt.resolved_by || '-'}</small></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('debt-loading').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Failed to load debt data: ${error.message}
+                </div>
+            `;
+        }
     }
 };
 

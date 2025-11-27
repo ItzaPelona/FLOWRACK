@@ -594,9 +594,7 @@ def return_request(request_id):
         update_query = """
             UPDATE requests
             SET status = 'returned',
-                actual_return_datetime = %s,
-                is_late = %s,
-                is_damaged = %s,
+                return_date = %s,
                 notes = COALESCE(notes || E'\\n', '') || %s,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
@@ -611,7 +609,7 @@ def return_request(request_id):
         if notes:
             return_note += f" - Notes: {notes}"
         
-        db.execute_query(update_query, (now, is_late, is_damaged, return_note, request_id))
+        db.execute_query(update_query, (now, return_note, request_id))
         
         # Apply penalties
         penalties_applied = []

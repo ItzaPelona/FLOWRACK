@@ -5,6 +5,7 @@ Authentication routes
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity, get_jwt
 from backend.models.user import User
+from backend.utils.audit_logger import log_login, log_logout
 import logging
 
 auth_bp = Blueprint('auth', __name__)
@@ -51,10 +52,15 @@ def login():
             password_hash = user_with_hash.password_hash
         
         if not User.check_password(password, password_hash):
+            # Log failed login attempt
+            log_login(None, registration_number, success=False)
             return jsonify({'error': 'Invalid credentials'}), 401
         
         # Create access token - convert user.id to string for JWT
         access_token = create_access_token(identity=str(user.id))
+        
+        # Log successful login
+        log_login(user.id, registration_number, success=True)
         
         return jsonify({
             'message': 'Login successful',
@@ -118,9 +124,18 @@ def register():
 def logout():
     """User logout endpoint"""
     try:
-        # Add token to blacklist
+        current_user_id = get_current_user_id()
         jti = get_jwt()['jti']
+        
+        # Get user for logging
+        user = User.get_by_id(current_user_id)
+        
+        # Add token to blacklist
         blacklisted_tokens.add(jti)
+        
+        # Log logout
+        if user:
+            log_logout(user.id, user.registration_number)
         
         return jsonify({'message': 'Logged out successfully'}), 200
         

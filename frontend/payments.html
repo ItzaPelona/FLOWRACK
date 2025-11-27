@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Management - FlowRack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="assets/css/dark-mode.css">
+    <style>
+        .payment-method-card {
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        .payment-method-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .payment-method-card.selected {
+            border-color: var(--bs-primary);
+            background-color: var(--bs-primary-bg-subtle);
+        }
+        .receipt-container {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+        }
+        .barcode {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            letter-spacing: 2px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #000;
+        }
+        .aging-badge {
+            font-weight: 600;
+            padding: 6px 12px;
+        }
+        .aging-current { background-color: #d1e7dd; color: #0f5132; }
+        .aging-1-30 { background-color: #fff3cd; color: #664d03; }
+        .aging-31-60 { background-color: #ffe5d0; color: #842029; }
+        .aging-61-90 { background-color: #f8d7da; color: #58151c; }
+        .aging-90-plus { background-color: #ea868f; color: #58151c; }
+        .payment-history-item {
+            border-left: 3px solid;
+            padding-left: 15px;
+            margin-bottom: 15px;
+        }
+        .payment-completed { border-left-color: #198754; }
+        .payment-pending { border-left-color: #ffc107; }
+        .payment-failed { border-left-color: #dc3545; }
+        .clabe-input {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <i class="bi bi-cash-stack"></i> Payment Management
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="bi bi-house"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link" id="userDisplay"></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="new-payment-tab" data-bs-toggle="tab" data-bs-target="#new-payment" type="button">
+                    <i class="bi bi-plus-circle"></i> New Payment
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="payment-history-tab" data-bs-toggle="tab" data-bs-target="#payment-history" type="button">
+                    <i class="bi bi-clock-history"></i> Payment History
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="aging-report-tab" data-bs-toggle="tab" data-bs-target="#aging-report" type="button">
+                    <i class="bi bi-graph-up-arrow"></i> Aging Report
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue" type="button">
+                    <i class="bi bi-exclamation-triangle"></i> Overdue Debts
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- New Payment Tab -->
+            <div class="tab-pane fade show active" id="new-payment" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="bi bi-cash"></i> Create Payment</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="paymentForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Select Debt</label>
+                                        <select class="form-select" id="debtSelect" required>
+                                            <option value="">Loading debts...</option>
+                                        </select>
+                                    </div>
+
+                                    <div id="debtDetails" class="alert alert-info d-none mb-3"></div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Payment Amount</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" id="paymentAmount" step="0.01" required>
+                                        </div>
+                                        <div class="form-text" id="remainingBalance"></div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Payment Method</label>
+                                        <div class="row g-3" id="paymentMethods">
+                                            <!-- Payment methods will be loaded here -->
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Notes (Optional)</label>
+                                        <textarea class="form-control" id="paymentNotes" rows="3"></textarea>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-check-circle"></i> Create Payment
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Payment Methods</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="paymentMethodsInfo">
+                                    <!-- Payment method details -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment History Tab -->
+            <div class="tab-pane fade" id="payment-history" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-list-ul"></i> All Payments</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="paymentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Receipt #</th>
+                                        <th>Date</th>
+                                        <th>User</th>
+                                        <th>Debt ID</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aging Report Tab -->
+            <div class="tab-pane fade" id="aging-report" role="tabpanel">
+                <div class="row mb-4">
+                    <div class="col-md-3" id="agingSummaryCards">
+                        <!-- Summary cards will be inserted here -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-warning">
+                        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Debt Aging Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="agingTable">
+                                <thead>
+                                    <tr>
+                                        <th>Debt ID</th>
+                                        <th>User</th>
+                                        <th>Product</th>
+                                        <th>Total Amount</th>
+                                        <th>Balance</th>
+                                        <th>Due Date</th>
+                                        <th>Days Overdue</th>
+                                        <th>Aging Category</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue Debts Tab -->
+            <div class="tab-pane fade" id="overdue" role="tabpanel">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="bi bi-exclamation-octagon"></i> Overdue Debts</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="overdueTable">
+                                <thead>
+                                    <tr>
+                                        <th>Debt ID</th>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Product</th>
+                                        <th>Balance</th>
+                                        <th>Due Date</th>
+                                        <th>Days Overdue</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div class="modal fade" id="receiptModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-receipt"></i> Payment Receipt</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="receiptContent">
+                    <!-- Receipt content will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="printReceipt()">
+                        <i class="bi bi-printer"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/payments.js"></script>
+</body>
+</html>

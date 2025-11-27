@@ -1,0 +1,330 @@
+/**
+ * Touch Gestures Styles
+ * Styles for touch interactions and swipe gestures
+ */
+
+/* Pull to Refresh Indicator */
+.pull-refresh-indicator {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    width: 40px;
+    height: 40px;
+    background: #007bff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 9998;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pull-refresh-indicator.ready {
+    background: #28a745;
+}
+
+.pull-refresh-indicator.refreshing i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Swipe Actions Container */
+.swipe-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: stretch;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.swipe-actions.revealed {
+    opacity: 1;
+}
+
+.swipe-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    border: none;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.swipe-action:active {
+    filter: brightness(0.9);
+}
+
+.swipe-action.primary {
+    background: #007bff;
+}
+
+.swipe-action.success {
+    background: #28a745;
+}
+
+.swipe-action.danger {
+    background: #dc3545;
+}
+
+.swipe-action.warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.swipe-action.info {
+    background: #17a2b8;
+}
+
+.swipe-action i {
+    margin-right: 6px;
+}
+
+/* Swipeable Item */
+.swipeable-item {
+    position: relative;
+    z-index: 2;
+    background: white;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
+}
+
+.swipeable-item.delete-ready {
+    background: #dc3545;
+    color: white;
+}
+
+.swipeable-item.deleting {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Touch Feedback */
+.touchable {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.touchable::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.05);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    border-radius: inherit;
+}
+
+.touchable:active::before {
+    opacity: 1;
+}
+
+/* Haptic Feedback Animation */
+@keyframes haptic {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.98); }
+    100% { transform: scale(1); }
+}
+
+.haptic {
+    animation: haptic 0.1s ease;
+}
+
+/* Mobile-Optimized Button */
+.btn-mobile {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 16px;
+    touch-action: manipulation;
+}
+
+/* Swipe Indicator */
+.swipe-indicator {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    color: rgba(0, 0, 0, 0.3);
+    font-size: 24px;
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* Mobile List Items */
+.mobile-list-item {
+    position: relative;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.mobile-list-item:active {
+    background: #f8f9fa;
+}
+
+/* Drag Handle */
+.drag-handle {
+    padding: 10px;
+    cursor: grab;
+    color: #6c757d;
+    touch-action: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Prevent text selection during gestures */
+.no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    /* Larger touch targets */
+    .btn, button, a {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Better spacing for touch */
+    .card {
+        margin-bottom: 12px;
+    }
+    
+    /* Prevent zoom on input focus */
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+    
+    /* Smooth scrolling */
+    * {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* iOS specific */
+@supports (-webkit-touch-callout: none) {
+    /* Safe area for notch */
+    .pull-refresh-indicator {
+        top: env(safe-area-inset-top);
+    }
+    
+    /* Prevent bounce on body */
+    body {
+        overscroll-behavior-y: contain;
+    }
+}
+
+/* Android specific */
+@supports not (-webkit-touch-callout: none) {
+    /* Android optimizations */
+    .touchable:active {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+}
+
+/* Long Press Animation */
+@keyframes longPressRipple {
+    0% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.long-press-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.1);
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+    animation: longPressRipple 0.6s ease-out;
+}
+
+/* Gesture Tutorial Overlay */
+.gesture-tutorial {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.gesture-tutorial-content {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    text-align: center;
+}
+
+.gesture-tutorial h3 {
+    margin: 0 0 16px 0;
+    font-size: 20px;
+}
+
+.gesture-tutorial-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    text-align: left;
+}
+
+.gesture-tutorial-icon {
+    font-size: 32px;
+    color: #007bff;
+    min-width: 40px;
+}
+
+.gesture-tutorial-text h4 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.gesture-tutorial-text p {
+    margin: 0;
+    font-size: 14px;
+    color: #6c757d;
+}

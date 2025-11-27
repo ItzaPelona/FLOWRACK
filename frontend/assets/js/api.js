@@ -305,8 +305,37 @@ const API = {
     async getDeliveryHistory(params = {}) {
         const queryParams = new URLSearchParams(params).toString();
         return this.request(`/requests/delivery-history${queryParams ? '?' + queryParams : ''}`);
+    },
+    
+    // Analytics APIs
+    async getUsageStatistics(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.request(`/analytics/usage-statistics${queryParams ? '?' + queryParams : ''}`);
+    },
+    
+    async getStockForecast(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.request(`/analytics/stock-forecast${queryParams ? '?' + queryParams : ''}`);
+    },
+    
+    async getLateReturnAnalytics(params = {}) {
+        const queryParams = new URLSearchParams(params).toString();
+        return this.request(`/analytics/late-returns${queryParams ? '?' + queryParams : ''}`);
+    },
+    
+    async getDebtCollectionDashboard() {
+        return this.request('/analytics/debt-collection');
     }
 };
 
+// Helper function for direct API requests
+// This function allows calling apiRequest('/api/endpoint', options) directly
+async function apiRequest(endpoint, options = {}) {
+    // Strip /api prefix if it exists since API.request adds it
+    const cleanEndpoint = endpoint.startsWith('/api') ? endpoint.substring(4) : endpoint;
+    return API.request(cleanEndpoint, options);
+}
+
 // Export for use in other modules
 window.API = API;
+window.apiRequest = apiRequest;

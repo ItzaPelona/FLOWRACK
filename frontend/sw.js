@@ -3,8 +3,9 @@
  * Handles offline functionality, caching, and PWA features
  */
 
-const CACHE_NAME = 'flowrack-v1.0.0';
-const API_CACHE_NAME = 'flowrack-api-v1.0.0';
+const CACHE_NAME = 'flowrack-v1.1.0';
+const API_CACHE_NAME = 'flowrack-api-v1.1.0';
+const IMAGE_CACHE_NAME = 'flowrack-images-v1.1.0';
 
 // Files to cache for offline functionality
 const STATIC_ASSETS = [
@@ -16,6 +17,15 @@ const STATIC_ASSETS = [
     '/assets/js/api.js',
     '/assets/js/utils.js',
     '/assets/js/auth.js',
+    '/suppliers.html',
+    '/adjustments.html',
+    '/audit.html',
+    '/scanner.html',
+    '/low-stock.html',
+    '/assets/icons/icon-72x72.png',
+    '/assets/icons/icon-192x192.png',
+    '/assets/icons/icon-512x512.png',
+    '/favicon.ico',
     // Bootstrap CSS and JS from CDN (cached dynamically)
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
@@ -23,12 +33,19 @@ const STATIC_ASSETS = [
     'https://cdn.socket.io/4.7.4/socket.io.min.js'
 ];
 
-// API endpoints to cache
+// API endpoints to cache (GET requests only)
 const CACHEABLE_API_ROUTES = [
     '/api/products',
     '/api/products/categories',
-    '/api/auth/profile'
+    '/api/products/low-stock',
+    '/api/auth/profile',
+    '/api/suppliers',
+    '/api/adjustments',
+    '/api/audit/stats'
 ];
+
+// Cache duration in milliseconds
+const API_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
@@ -111,7 +128,19 @@ async function handleApiRequest(request) {
         // Cache successful GET requests for cacheable routes
         if (networkResponse.ok && isGetRequest && isCacheableRoute) {
             const cache = await caches.open(API_CACHE_NAME);
-            cache.put(request.clone(), networkResponse.clone());
+            
+            // Clone response and add timestamp header
+            const responseToCache = networkResponse.clone();
+            const cachedResponse = new Response(responseToCache.body, {
+                status: responseToCache.status,
+                statusText: responseToCache.statusText,
+                headers: {
+                    ...Object.fromEntries(responseToCache.headers.entries()),
+                    'X-Cached-Time': Date.now().toString()
+                }
+            });
+            
+            cache.put(request.clone(), cachedResponse);
         }
         
         return networkResponse;
@@ -123,8 +152,25 @@ async function handleApiRequest(request) {
         if (isGetRequest) {
             const cachedResponse = await caches.match(request);
             if (cachedResponse) {
-                console.log('Serving from cache:', request.url);
-                return cachedResponse;
+                // Check cache age
+                const cachedTime = cachedResponse.headers.get('X-Cached-Time');
+                const age = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+                
+                // Return cached response even if stale (offline mode)
+                console.log(`Serving from cache (age: ${Math.round(age/1000)}s):`, request.url);
+                
+                // Add offline indicator header
+                const offlineResponse = new Response(cachedResponse.body, {
+                    status: cachedResponse.status,
+                    statusText: cachedResponse.statusText,
+                    headers: {
+                        ...Object.fromEntries(cachedResponse.headers.entries()),
+                        'X-Offline-Mode': 'true',
+                        'X-Cache-Age': age.toString()
+                    }
+                });
+                
+                return offlineResponse;
             }
         }
         
@@ -132,13 +178,15 @@ async function handleApiRequest(request) {
         return new Response(
             JSON.stringify({
                 error: 'Offline - This action requires an internet connection',
-                offline: true
+                offline: true,
+                message: 'No cached data available for this request'
             }),
             {
                 status: 503,
                 statusText: 'Service Unavailable',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Offline-Mode': 'true'
                 }
             }
         );

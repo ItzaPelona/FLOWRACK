@@ -1,0 +1,327 @@
+/**
+ * PWA Installation Styles
+ * Styles for install prompts, banners, and modals
+ */
+
+/* Install Banner */
+.pwa-install-banner {
+    position: fixed;
+    bottom: -200px;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 16px;
+}
+
+.pwa-install-banner.show {
+    bottom: 0;
+}
+
+.pwa-install-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.pwa-install-icon img {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.pwa-install-text {
+    flex: 1;
+}
+
+.pwa-install-text h4 {
+    margin: 0 0 4px 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.pwa-install-text p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.95;
+}
+
+.pwa-install-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.pwa-install-banner .btn {
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.pwa-install-banner .btn-primary {
+    background: white;
+    color: #007bff;
+    border: none;
+}
+
+.pwa-install-banner .btn-primary:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pwa-install-banner .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pwa-install-banner .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Install Modal */
+.pwa-install-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 20px;
+}
+
+.pwa-install-modal.show {
+    opacity: 1;
+}
+
+.pwa-install-modal-content {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 100%;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pwa-install-modal.show .pwa-install-modal-content {
+    transform: scale(1);
+}
+
+.pwa-install-modal-header {
+    padding: 24px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pwa-install-modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #212529;
+}
+
+.pwa-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.pwa-close-btn:hover {
+    color: #212529;
+}
+
+.pwa-install-modal-body {
+    padding: 24px;
+}
+
+.pwa-install-modal-body ol {
+    margin: 0;
+    padding-left: 24px;
+}
+
+.pwa-install-modal-body li {
+    margin-bottom: 12px;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #495057;
+}
+
+.pwa-install-modal-body li:last-child {
+    margin-bottom: 0;
+}
+
+.pwa-install-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Toast Notifications */
+.pwa-toast {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: white;
+    color: #212529;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10000;
+    transform: translateX(400px);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 350px;
+}
+
+.pwa-toast.show {
+    transform: translateX(0);
+}
+
+.pwa-toast.success {
+    border-left: 4px solid #28a745;
+}
+
+.pwa-toast.success i {
+    color: #28a745;
+    font-size: 24px;
+}
+
+.pwa-toast span {
+    font-weight: 500;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .pwa-install-banner {
+        padding: 12px;
+    }
+    
+    .pwa-install-content {
+        gap: 12px;
+    }
+    
+    .pwa-install-icon img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .pwa-install-text h4 {
+        font-size: 16px;
+    }
+    
+    .pwa-install-text p {
+        font-size: 13px;
+    }
+    
+    .pwa-install-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .pwa-install-banner .btn {
+        font-size: 14px;
+        padding: 8px 16px;
+    }
+    
+    .pwa-toast {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .pwa-install-modal {
+        padding: 10px;
+    }
+}
+
+/* Standalone mode (when installed) */
+@media (display-mode: standalone) {
+    .pwa-install-banner {
+        display: none !important;
+    }
+}
+
+/* iOS specific */
+@supports (-webkit-touch-callout: none) {
+    .pwa-install-banner {
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+}
+
+/* Add to Home Screen hint (floating button) */
+.pwa-install-hint {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: #007bff;
+    color: white;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+    cursor: pointer;
+    z-index: 999;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+}
+
+.pwa-install-hint:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 123, 255, 0.5);
+}
+
+.pwa-install-hint i {
+    font-size: 24px;
+}
+
+/* Hide hint when banner is visible */
+.pwa-install-banner.show ~ .pwa-install-hint {
+    display: none;
+}
+
+/* Animation for install button */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(0, 123, 255, 0.6);
+    }
+    100% {
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+    }
+}
+
+.pwa-install-hint.pulse {
+    animation: pulse 2s infinite;
+}

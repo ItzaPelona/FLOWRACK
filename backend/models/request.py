@@ -32,10 +32,6 @@ class Request:
             self.notes = request_data.get('notes')
             self.qr_code = request_data.get('qr_code')
             self.expected_return_datetime = request_data.get('expected_return_datetime')
-            self.actual_return_datetime = request_data.get('actual_return_datetime')
-            self.is_late = request_data.get('is_late', False)
-            self.is_damaged = request_data.get('is_damaged', False)
-            self.damage_description = request_data.get('damage_description')
             self.created_at = request_data.get('created_at')
             self.updated_at = request_data.get('updated_at')
     
@@ -174,7 +170,6 @@ class Request:
             SELECT id, user_id, request_number, status, requested_date, requested_time,
                    estimated_usage_period, supervising_instructor, purpose, collection_date,
                    delivery_date, return_date, notes, qr_code, expected_return_datetime,
-                   actual_return_datetime, is_late, is_damaged, damage_description,
                    created_at, updated_at
             FROM requests WHERE id = %s
         """
@@ -188,7 +183,6 @@ class Request:
             SELECT id, user_id, request_number, status, requested_date, requested_time,
                    estimated_usage_period, supervising_instructor, purpose, collection_date,
                    delivery_date, return_date, notes, qr_code, expected_return_datetime,
-                   actual_return_datetime, is_late, is_damaged, damage_description,
                    created_at, updated_at
             FROM requests WHERE request_number = %s
         """
@@ -202,7 +196,6 @@ class Request:
             SELECT id, user_id, request_number, status, requested_date, requested_time,
                    estimated_usage_period, supervising_instructor, purpose, collection_date,
                    delivery_date, return_date, notes, qr_code, expected_return_datetime,
-                   actual_return_datetime, is_late, is_damaged, damage_description,
                    created_at, updated_at
             FROM requests WHERE qr_code = %s
         """
@@ -244,7 +237,6 @@ class Request:
             SELECT r.id, r.user_id, r.request_number, r.status, r.requested_date, r.requested_time,
                    r.estimated_usage_period, r.supervising_instructor, r.purpose, r.collection_date,
                    r.delivery_date, r.return_date, r.notes, r.qr_code, r.expected_return_datetime,
-                   r.actual_return_datetime, r.is_late, r.is_damaged, r.damage_description,
                    r.created_at, r.updated_at,
                    u.first_name || ' ' || u.last_name as user_name,
                    u.registration_number
@@ -486,10 +478,6 @@ class Request:
             'notes': self.notes,
             'qr_code': self.qr_code,
             'expected_return_datetime': self.expected_return_datetime.isoformat() if self.expected_return_datetime else None,
-            'actual_return_datetime': self.actual_return_datetime.isoformat() if self.actual_return_datetime else None,
-            'is_late': self.is_late,
-            'is_damaged': self.is_damaged,
-            'damage_description': self.damage_description,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

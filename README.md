@@ -102,6 +102,32 @@ FLOWRACK/
 - **Request Processing**: User requests with approval workflow
 - **Debt Management**: Customer credit and payment tracking
 - **Dashboard**: Real-time analytics and KPIs
+- **Analytics & Reporting**: Usage statistics, stock forecasting, late return tracking
+- **PWA Support**: Offline functionality and mobile app-like experience
+
+### Inventory Management (New!)
+- **Stock Adjustments**: Complete audit trail for inventory corrections
+  - Types: correction, damage, loss, found, transfer, return, initial
+  - Tracks before/after quantities and reasons
+  - User and approval tracking
+- **Supplier Management**: Full supplier lifecycle management
+  - Contact information and product associations
+  - Cost pricing and lead time tracking
+  - Preferred supplier per product
+- **Batch Operations**: Update multiple products simultaneously (admin-only)
+- **Low Stock Monitoring**: Automated reorder alerts
+  - Configurable reorder points and quantities
+  - Supplier integration for quick reordering
+- **Product Enhancements**: Barcode fields and image support ready
+
+📖 **Complete Documentation:**
+- `docs/INVENTORY_MANAGEMENT.md` - Full API reference
+- `docs/QUICKSTART_INVENTORY.md` - Quick setup guide
+- `docs/SCHEMA_INTEGRATION.md` - Technical details
+- **Product Inventory**: Stock tracking with real-time updates
+- **Request Processing**: User requests with approval workflow
+- **Debt Management**: Customer credit and payment tracking
+- **Dashboard**: Real-time analytics and KPIs
 - **PWA Support**: Offline functionality and mobile app-like experience
 
 ### User Roles

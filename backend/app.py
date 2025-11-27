@@ -37,6 +37,13 @@ from backend.routes.products import products_bp
 from backend.routes.requests import requests_bp
 from backend.routes.debts import debts_bp
 from backend.routes.dashboard import dashboard_bp
+from backend.routes.analytics import analytics_bp
+from backend.routes.adjustments import adjustments_bp
+from backend.routes.suppliers import suppliers_bp
+from backend.routes.audit import audit_bp
+from backend.routes.payments import payments_bp
+from backend.routes.collaboration import collaboration_bp
+from backend.routes.search import search_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -44,6 +51,13 @@ app.register_blueprint(products_bp, url_prefix='/api/products')
 app.register_blueprint(requests_bp, url_prefix='/api/requests')
 app.register_blueprint(debts_bp, url_prefix='/api/debts')
 app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
+app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+app.register_blueprint(adjustments_bp, url_prefix='/api/adjustments')
+app.register_blueprint(suppliers_bp, url_prefix='/api/suppliers')
+app.register_blueprint(audit_bp, url_prefix='/api/audit')
+app.register_blueprint(payments_bp)
+app.register_blueprint(collaboration_bp)
+app.register_blueprint(search_bp)
 
 # Import WebSocket events
 from backend.websocket import events

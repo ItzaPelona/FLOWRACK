@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner - FlowRack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <style>
+        .scanner-section {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 1rem auto;
+            background: #000;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        #scanner-video {
+            width: 100%;
+            display: block;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 50%;
+            border: 3px solid var(--success-color);
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .scanner-status {
+            text-align: center;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+        }
+
+        .scanner-status.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .scanner-status.scanning {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .scanner-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .scanner-result {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--light-color);
+            border-radius: var(--border-radius);
+            display: none;
+        }
+
+        .scanner-result.active {
+            display: block;
+        }
+
+        .product-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-top: 1rem;
+        }
+
+        .product-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .info-item {
+            padding: 0.5rem;
+        }
+
+        .info-item strong {
+            display: block;
+            color: var(--secondary-color);
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .manual-entry {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--light-color);
+            border-radius: var(--border-radius);
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        #camera-select {
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--secondary-color);
+        }
+
+        .beep-animation {
+            animation: beep 0.5s ease-in-out;
+        }
+
+        @keyframes beep {
+            0%, 100% { border-color: var(--success-color); }
+            50% { border-color: var(--warning-color); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>FlowRack - Barcode Scanner</h1>
+        </div>
+        <div class="nav-user">
+            <span id="userName">Loading...</span>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="action-bar">
+            <button id="backBtn" class="btn-secondary">
+                <span class="icon">←</span> Back
+            </button>
+        </div>
+
+        <div class="scanner-section">
+            <h2>Scan Product Barcode</h2>
+            
+            <!-- Status Message -->
+            <div id="scannerStatus" class="scanner-status">
+                Click "Start Scanner" to begin
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="camera-controls">
+                <button id="startScannerBtn" class="btn-primary">
+                    <span class="icon">📷</span> Start Scanner
+                </button>
+                <button id="stopScannerBtn" class="btn-danger" style="display:none;">
+                    <span class="icon">⏹</span> Stop Scanner
+                </button>
+                <select id="camera-select" style="display:none;">
+                    <option value="">Select Camera...</option>
+                </select>
+            </div>
+
+            <!-- Scanner Video -->
+            <div class="scanner-container" id="scannerContainer" style="display:none;">
+                <video id="scanner-video" playsinline></video>
+                <div class="scanner-overlay"></div>
+                <canvas id="scanner-canvas" style="display:none;"></canvas>
+            </div>
+
+            <!-- Manual Entry -->
+            <div class="manual-entry">
+                <h3>Or Enter Barcode Manually</h3>
+                <div class="form-group">
+                    <input type="text" id="manualBarcode" placeholder="Enter barcode..." 
+                           style="width: 70%; padding: 0.5rem;">
+                    <button id="searchBarcodeBtn" class="btn-primary" style="margin-left: 1rem;">
+                        Search
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result Display -->
+            <div id="scannerResult" class="scanner-result">
+                <h3>Scan Result</h3>
+                <div id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('flowrack_token');
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        const user = JSON.parse(localStorage.getItem('flowrack_user') || '{}');
+        if (user.first_name && user.last_name) {
+            document.getElementById('userName').textContent = user.first_name + ' ' + user.last_name;
+        }
+
+        // State
+        let html5QrcodeScanner = null;
+        let isScanning = false;
+        let lastScannedCode = null;
+        let scanCooldown = false;
+
+        // Event Listeners
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        document.getElementById('backBtn').addEventListener('click', () => window.history.back());
+        document.getElementById('startScannerBtn').addEventListener('click', startScanner);
+        document.getElementById('stopScannerBtn').addEventListener('click', stopScanner);
+        document.getElementById('searchBarcodeBtn').addEventListener('click', searchManualBarcode);
+        document.getElementById('manualBarcode').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchManualBarcode();
+        });
+
+        // Check for camera support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            updateStatus('Camera not supported in this browser. Please use manual entry.', 'error');
+            document.getElementById('startScannerBtn').disabled = true;
+        }
+
+        // Functions
+        function updateStatus(message, type = 'ready') {
+            const statusEl = document.getElementById('scannerStatus');
+            statusEl.textContent = message;
+            statusEl.className = `scanner-status ${type}`;
+        }
+
+        async function startScanner() {
+            try {
+                updateStatus('Requesting camera permission...', 'scanning');
+                
+                // Check if we have camera permission
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                
+                // Stop the test stream
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Show video container
+                document.getElementById('scannerContainer').style.display = 'block';
+                document.getElementById('startScannerBtn').style.display = 'none';
+                document.getElementById('stopScannerBtn').style.display = 'inline-block';
+                
+                // Initialize scanner
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+                
+                html5QrcodeScanner = new Html5Qrcode("scannerContainer");
+                
+                await html5QrcodeScanner.start(
+                    { facingMode: "environment" },
+                    config,
+                    onScanSuccess,
+                    onScanFailure
+                );
+                
+                isScanning = true;
+                updateStatus('Scanner ready! Point camera at barcode', 'ready');
+                
+            } catch (error) {
+                console.error('Camera error:', error);
+                let errorMsg = 'Failed to start camera: ';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMsg += 'Camera permission denied. Please allow camera access.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMsg += 'No camera found. Please check your device.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMsg += 'Camera is in use by another application.';
+                } else {
+                    errorMsg += error.message || 'Unknown error';
+                }
+                
+                updateStatus(errorMsg, 'error');
+                stopScanner();
+            }
+        }
+
+        async function stopScanner() {
+            if (html5QrcodeScanner && isScanning) {
+                try {
+                    await html5QrcodeScanner.stop();
+                    html5QrcodeScanner.clear();
+                } catch (error) {
+                    console.error('Error stopping scanner:', error);
+                }
+            }
+            
+            isScanning = false;
+            html5QrcodeScanner = null;
+            
+            document.getElementById('scannerContainer').style.display = 'none';
+            document.getElementById('startScannerBtn').style.display = 'inline-block';
+            document.getElementById('stopScannerBtn').style.display = 'none';
+            
+            updateStatus('Scanner stopped. Click "Start Scanner" to resume', 'ready');
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // Prevent rapid re-scans of same code
+            if (scanCooldown || decodedText === lastScannedCode) {
+                return;
+            }
+            
+            lastScannedCode = decodedText;
+            scanCooldown = true;
+            
+            // Beep effect
+            const overlay = document.querySelector('.scanner-overlay');
+            overlay.classList.add('beep-animation');
+            setTimeout(() => overlay.classList.remove('beep-animation'), 500);
+            
+            // Play beep sound (optional)
+            playBeep();
+            
+            // Search for product
+            searchByBarcode(decodedText);
+            
+            // Cooldown
+            setTimeout(() => {
+                scanCooldown = false;
+            }, 2000);
+        }
+
+        function onScanFailure(error) {
+            // Ignore scan failures (normal during scanning)
+        }
+
+        async function searchManualBarcode() {
+            const barcode = document.getElementById('manualBarcode').value.trim();
+            if (!barcode) {
+                showError('Please enter a barcode');
+                return;
+            }
+            
+            await searchByBarcode(barcode);
+        }
+
+        async function searchByBarcode(barcode) {
+            try {
+                updateStatus(`Searching for barcode: ${barcode}...`, 'scanning');
+                
+                // Search products by barcode
+                const response = await apiRequest(`/api/products?search=${encodeURIComponent(barcode)}`);
+                
+                // Filter to exact barcode match
+                const product = response.products.find(p => p.barcode === barcode);
+                
+                if (product) {
+                    displayProduct(product, barcode);
+                    updateStatus('Product found!', 'ready');
+                } else {
+                    displayNoResult(barcode);
+                    updateStatus('No product found with this barcode', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                updateStatus('Error searching for product: ' + error.message, 'error');
+                showError('Failed to search for product');
+            }
+        }
+
+        function displayProduct(product, barcode) {
+            const resultEl = document.getElementById('scannerResult');
+            const contentEl = document.getElementById('resultContent');
+            
+            const stockStatus = product.stock_quantity <= 0 ? 'out-of-stock' :
+                               product.stock_quantity <= product.minimum_stock ? 'critical' :
+                               product.stock_quantity <= product.reorder_point ? 'low' : 'normal';
+            
+            contentEl.innerHTML = `
+                <div class="product-card">
+                    <h3>${product.name}</h3>
+                    <p><strong>Barcode:</strong> ${barcode}</p>
+                    
+                    <div class="product-info">
+                        <div class="info-item">
+                            <strong>Product Code:</strong>
+                            ${product.product_code}
+                        </div>
+                        <div class="info-item">
+                            <strong>Category:</strong>
+                            ${product.category}
+                        </div>
+                        <div class="info-item">
+                            <strong>Stock:</strong>
+                            <span class="${stockStatus === 'normal' ? 'text-success' : stockStatus === 'low' ? 'text-warning' : 'text-danger'}">
+                                ${product.stock_quantity} ${product.unit}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Location:</strong>
+                            ${product.location || 'Not specified'}
+                        </div>
+                        <div class="info-item">
+                            <strong>Min Stock:</strong>
+                            ${product.minimum_stock || 'Not set'}
+                        </div>
+                        <div class="info-item">
+                            <strong>Status:</strong>
+                            <span class="badge ${product.is_active ? 'badge-success' : 'badge-inactive'}">
+                                ${product.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    ${product.description ? `
+                        <div class="info-item" style="margin-top: 1rem;">
+                            <strong>Description:</strong>
+                            ${product.description}
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                        <a href="product-details.html?id=${product.id}" class="btn-primary">
+                            View Details
+                        </a>
+                        ${stockStatus !== 'normal' ? `
+                            <a href="low-stock.html" class="btn-warning">
+                                Check Reorder
+                            </a>
+                        ` : ''}
+                        <button onclick="clearResult()" class="btn-secondary">
+                            Scan Another
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            resultEl.classList.add('active');
+            
+            // Scroll to result
+            resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function displayNoResult(barcode) {
+            const resultEl = document.getElementById('scannerResult');
+            const contentEl = document.getElementById('resultContent');
+            
+            contentEl.innerHTML = `
+                <div class="product-card">
+                    <h3>No Product Found</h3>
+                    <p>Barcode <strong>${barcode}</strong> is not registered in the system.</p>
+                    
+                    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                        <a href="add-product.html?barcode=${encodeURIComponent(barcode)}" class="btn-primary">
+                            Add New Product
+                        </a>
+                        <button onclick="clearResult()" class="btn-secondary">
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            resultEl.classList.add('active');
+        }
+
+        function clearResult() {
+            document.getElementById('scannerResult').classList.remove('active');
+            document.getElementById('manualBarcode').value = '';
+            lastScannedCode = null;
+            
+            if (isScanning) {
+                updateStatus('Scanner ready! Point camera at barcode', 'ready');
+            }
+        }
+
+        function playBeep() {
+            try {
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = context.createOscillator();
+                const gainNode = context.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(context.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, context.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+                
+                oscillator.start(context.currentTime);
+                oscillator.stop(context.currentTime + 0.1);
+            } catch (error) {
+                console.log('Audio not supported:', error);
+            }
+        }
+
+        // Make clearResult available globally
+        window.clearResult = clearResult;
+
+        // Auto-focus manual input
+        document.getElementById('manualBarcode').focus();
+    </script>
+    <!-- PWA Installer -->
+    <link rel="stylesheet" href="assets/css/pwa-installer.css">
+    <script src="assets/js/pwa-installer.js"></script>
+
+    <!-- Touch Gestures -->
+    <link rel="stylesheet" href="assets/css/touch-gestures.css">
+    <script src="assets/js/touch-gestures.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

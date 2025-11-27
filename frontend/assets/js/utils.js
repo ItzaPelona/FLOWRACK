@@ -262,6 +262,19 @@ const Utils = {
     },
     
     /**
+     * Truncate text to a maximum length
+     * @param {string} text - Text to truncate
+     * @param {number} maxLength - Maximum length
+     * @param {string} suffix - Suffix to add (default: '...')
+     * @returns {string} Truncated text
+     */
+    truncate(text, maxLength, suffix = '...') {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength - suffix.length) + suffix;
+    },
+    
+    /**
      * Store data in localStorage with expiration
      * @param {string} key - Storage key
      * @param {*} value - Value to store
@@ -415,5 +428,26 @@ const Utils = {
     }
 };
 
+// Helper functions for backward compatibility
+function formatDate(date) {
+    return Utils.formatDateTime(date, false);
+}
+
+function formatDateTime(date) {
+    return Utils.formatDateTime(date, true);
+}
+
+function formatCurrency(amount) {
+    return Utils.formatCurrency(amount);
+}
+
+function truncate(text, maxLength, suffix) {
+    return Utils.truncate(text, maxLength, suffix);
+}
+
 // Export for use in other modules
 window.Utils = Utils;
+window.formatDate = formatDate;
+window.formatDateTime = formatDateTime;
+window.formatCurrency = formatCurrency;
+window.truncate = truncate;

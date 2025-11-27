@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low Stock Alerts - FlowRack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>FlowRack - Low Stock Alerts</h1>
+        </div>
+        <div class="nav-user">
+            <span id="userName">Loading...</span>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Stats Summary -->
+        <div class="stats-row">
+            <div class="stat-card danger">
+                <h3 id="outOfStockCount">0</h3>
+                <p>Out of Stock</p>
+            </div>
+            <div class="stat-card warning">
+                <h3 id="criticalCount">0</h3>
+                <p>Critical</p>
+            </div>
+            <div class="stat-card info">
+                <h3 id="lowCount">0</h3>
+                <p>Low Stock</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalValue">$0</h3>
+                <p>Total Reorder Value</p>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button id="refreshBtn" class="btn-primary">
+                <span class="icon">🔄</span> Refresh
+            </button>
+            <div class="filter-group">
+                <label for="filterStatus">Status:</label>
+                <select id="filterStatus">
+                    <option value="">All</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                    <option value="critical">Critical</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterCategory">Category:</label>
+                <select id="filterCategory">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+            <button id="backBtn" class="btn-secondary">
+                <span class="icon">←</span> Back to Products
+            </button>
+        </div>
+
+        <!-- Low Stock Products Grid -->
+        <div class="low-stock-grid" id="lowStockGrid">
+            <div class="loading">Loading low stock products...</div>
+        </div>
+    </div>
+
+    <!-- Quick Reorder Modal -->
+    <div id="reorderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Quick Reorder</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="reorderProductInfo"></div>
+                
+                <form id="reorderForm">
+                    <input type="hidden" id="reorderProductId">
+                    
+                    <div class="form-group">
+                        <label>Current Stock</label>
+                        <input type="text" id="reorderCurrentStock" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reorder Point</label>
+                        <input type="text" id="reorderPoint" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Suggested Reorder Quantity</label>
+                        <input type="number" id="reorderQuantity" step="0.01" min="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Supplier</label>
+                        <select id="reorderSupplier">
+                            <option value="">No supplier linked</option>
+                        </select>
+                    </div>
+
+                    <div id="supplierInfo" class="supplier-quick-info"></div>
+
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="reorderNotes" rows="3" 
+                                  placeholder="Purchase order reference, urgency notes, etc."></textarea>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> This will create a purchase request. 
+                        You'll need to follow up with the supplier separately.
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Create Purchase Request</button>
+                        <button type="button" class="btn-secondary" id="cancelReorderBtn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('flowrack_token');
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        const user = JSON.parse(localStorage.getItem('flowrack_user') || '{}');
+        if (user.first_name && user.last_name) {
+            document.getElementById('userName').textContent = user.first_name + ' ' + user.last_name;
+        }
+
+        // Check operator/admin permissions
+        if (!['admin', 'operator'].includes(user.role)) {
+            alert('You do not have permission to access reorder alerts');
+            setTimeout(() => window.location.href = '/', 2000);
+        }
+
+        // State
+        let lowStockProducts = [];
+        let categories = new Set();
+
+        // Load data
+        loadLowStockProducts();
+
+        // Event Listeners
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        document.getElementById('refreshBtn').addEventListener('click', loadLowStockProducts);
+        document.getElementById('backBtn').addEventListener('click', () => window.location.href = 'products.html');
+        document.getElementById('filterStatus').addEventListener('change', filterProducts);
+        document.getElementById('filterCategory').addEventListener('change', filterProducts);
+        document.getElementById('reorderForm').addEventListener('submit', submitReorder);
+        document.getElementById('cancelReorderBtn').addEventListener('click', closeReorderModal);
+        document.getElementById('reorderSupplier').addEventListener('change', updateSupplierInfo);
+
+        // Close modals
+        document.querySelectorAll('.modal .close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', function() {
+                this.closest('.modal').style.display = 'none';
+            });
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        });
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadLowStockProducts, 300000);
+
+        // Functions
+        async function loadLowStockProducts() {
+            try {
+                const response = await apiRequest('/api/products/low-stock');
+                lowStockProducts = response.low_stock_products || [];
+                
+                // Extract categories
+                categories.clear();
+                lowStockProducts.forEach(p => {
+                    if (p.category) categories.add(p.category);
+                });
+                
+                populateCategoryFilter();
+                updateStats();
+                displayProducts();
+            } catch (error) {
+                showError('Failed to load low stock products: ' + error.message);
+                document.getElementById('lowStockGrid').innerHTML =
+                    `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function populateCategoryFilter() {
+            const select = document.getElementById('filterCategory');
+            select.innerHTML = '<option value="">All Categories</option>';
+            
+            Array.from(categories).sort().forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                select.appendChild(option);
+            });
+        }
+
+        function updateStats() {
+            const stats = {
+                outOfStock: 0,
+                critical: 0,
+                low: 0,
+                totalValue: 0
+            };
+
+            lowStockProducts.forEach(product => {
+                if (product.status === 'out_of_stock') stats.outOfStock++;
+                else if (product.status === 'critical') stats.critical++;
+                else if (product.status === 'low') stats.low++;
+
+                // Calculate reorder value
+                if (product.supplier && product.supplier.cost_price && product.reorder_quantity) {
+                    stats.totalValue += product.supplier.cost_price * product.reorder_quantity;
+                }
+            });
+
+            document.getElementById('outOfStockCount').textContent = stats.outOfStock;
+            document.getElementById('criticalCount').textContent = stats.critical;
+            document.getElementById('lowCount').textContent = stats.low;
+            document.getElementById('totalValue').textContent = '$' + stats.totalValue.toFixed(2);
+        }
+
+        function filterProducts() {
+            displayProducts();
+        }
+
+        function displayProducts() {
+            const statusFilter = document.getElementById('filterStatus').value;
+            const categoryFilter = document.getElementById('filterCategory').value;
+
+            let filtered = lowStockProducts.filter(product => {
+                if (statusFilter && product.status !== statusFilter) return false;
+                if (categoryFilter && product.category !== categoryFilter) return false;
+                return true;
+            });
+
+            const grid = document.getElementById('lowStockGrid');
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="empty-state">No low stock products found. All inventory levels are healthy! 🎉</div>';
+                return;
+            }
+
+            grid.innerHTML = filtered.map(product => {
+                const statusClass = product.status.replace('_', '-');
+                const deficit = product.reorder_point - product.stock_quantity;
+                const suggestedOrder = product.reorder_quantity || Math.max(deficit, product.minimum_stock || 10);
+                
+                return `
+                    <div class="low-stock-card ${statusClass}">
+                        <div class="card-header">
+                            <h4>${product.name}</h4>
+                            <span class="stock-status ${statusClass}">${product.status.replace('_', ' ')}</span>
+                        </div>
+                        
+                        <div class="stock-info">
+                            <p><strong>Code:</strong> ${product.barcode || product.id}</p>
+                            <p><strong>Category:</strong> ${product.category}</p>
+                            <p><strong>Location:</strong> ${product.location || 'Not specified'}</p>
+                            <p class="${product.status === 'out_of_stock' ? 'text-danger' : 'text-warning'}">
+                                <strong>Current Stock:</strong> ${product.stock_quantity}
+                            </p>
+                            <p><strong>Minimum:</strong> ${product.minimum_stock}</p>
+                            <p><strong>Reorder Point:</strong> ${product.reorder_point}</p>
+                            <p class="text-success"><strong>Suggested Order:</strong> ${suggestedOrder}</p>
+                        </div>
+
+                        ${product.supplier ? `
+                            <div class="supplier-quick-info">
+                                <p><strong>📦 Supplier:</strong> ${product.supplier.name}</p>
+                                ${product.supplier.cost_price ? `
+                                    <p><strong>Cost:</strong> $${product.supplier.cost_price.toFixed(2)} each</p>
+                                    <p><strong>Est. Total:</strong> $${(product.supplier.cost_price * suggestedOrder).toFixed(2)}</p>
+                                ` : ''}
+                                ${product.supplier.lead_time_days ? `
+                                    <p><strong>Lead Time:</strong> ${product.supplier.lead_time_days} days</p>
+                                ` : ''}
+                                ${product.supplier.minimum_order_quantity ? `
+                                    <p><strong>Min Order:</strong> ${product.supplier.minimum_order_quantity}</p>
+                                ` : ''}
+                            </div>
+                        ` : '<p class="text-warning"><small>⚠️ No supplier assigned</small></p>'}
+
+                        <div class="reorder-action">
+                            <button class="btn-primary" onclick="openReorderModal(${product.id})">
+                                Quick Reorder
+                            </button>
+                            ${product.supplier && product.supplier.email ? `
+                                <a href="mailto:${product.supplier.email}?subject=Reorder Request: ${encodeURIComponent(product.name)}&body=We would like to place an order for ${suggestedOrder} units of ${encodeURIComponent(product.name)}." 
+                                   class="btn-secondary" target="_blank">
+                                    Email Supplier
+                                </a>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openReorderModal(productId) {
+            const product = lowStockProducts.find(p => p.id === productId);
+            if (!product) return;
+
+            document.getElementById('reorderProductId').value = productId;
+            document.getElementById('reorderCurrentStock').value = product.stock_quantity;
+            document.getElementById('reorderPoint').value = product.reorder_point || product.minimum_stock;
+            
+            const suggestedQty = product.reorder_quantity || 
+                                Math.max((product.reorder_point - product.stock_quantity), 
+                                        product.minimum_stock || 10);
+            document.getElementById('reorderQuantity').value = suggestedQty;
+
+            // Product info
+            const productInfo = `
+                <div class="product-info-card">
+                    <h3>${product.name}</h3>
+                    <p><strong>Category:</strong> ${product.category}</p>
+                    <p><strong>Location:</strong> ${product.location || 'Not specified'}</p>
+                    <p class="${product.status === 'out_of_stock' ? 'text-danger' : 'text-warning'}">
+                        <strong>Status:</strong> ${product.status.replace('_', ' ').toUpperCase()}
+                    </p>
+                </div>
+            `;
+            document.getElementById('reorderProductInfo').innerHTML = productInfo;
+
+            // Supplier dropdown
+            const supplierSelect = document.getElementById('reorderSupplier');
+            if (product.supplier) {
+                supplierSelect.innerHTML = `
+                    <option value="${product.supplier.id}" selected>
+                        ${product.supplier.name}
+                    </option>
+                `;
+                updateSupplierInfo();
+            } else {
+                supplierSelect.innerHTML = '<option value="">No supplier linked</option>';
+                document.getElementById('supplierInfo').innerHTML = '';
+            }
+
+            document.getElementById('reorderModal').style.display = 'block';
+        }
+
+        function closeReorderModal() {
+            document.getElementById('reorderModal').style.display = 'none';
+            document.getElementById('reorderForm').reset();
+        }
+
+        function updateSupplierInfo() {
+            const productId = parseInt(document.getElementById('reorderProductId').value);
+            const product = lowStockProducts.find(p => p.id === productId);
+            
+            if (!product || !product.supplier) {
+                document.getElementById('supplierInfo').innerHTML = '';
+                return;
+            }
+
+            const supplier = product.supplier;
+            const quantity = parseFloat(document.getElementById('reorderQuantity').value) || 0;
+            const cost = supplier.cost_price ? supplier.cost_price * quantity : 0;
+
+            document.getElementById('supplierInfo').innerHTML = `
+                <p><strong>Contact:</strong> ${supplier.email || 'N/A'} | ${supplier.phone || 'N/A'}</p>
+                ${supplier.cost_price ? `<p><strong>Unit Cost:</strong> $${supplier.cost_price.toFixed(2)}</p>` : ''}
+                ${cost > 0 ? `<p><strong>Estimated Total:</strong> $${cost.toFixed(2)}</p>` : ''}
+                ${supplier.lead_time_days ? `<p><strong>Lead Time:</strong> ${supplier.lead_time_days} days</p>` : ''}
+                ${supplier.minimum_order_quantity ? `<p><strong>Minimum Order:</strong> ${supplier.minimum_order_quantity}</p>` : ''}
+            `;
+        }
+
+        async function submitReorder(e) {
+            e.preventDefault();
+            
+            const productId = parseInt(document.getElementById('reorderProductId').value);
+            const quantity = parseFloat(document.getElementById('reorderQuantity').value);
+            const notes = document.getElementById('reorderNotes').value;
+            const product = lowStockProducts.find(p => p.id === productId);
+
+            // For now, we'll create a stock adjustment of type "initial" to represent the reorder
+            // In a full system, you'd create a purchase order
+            const adjustmentData = {
+                product_id: productId,
+                adjustment_type: 'initial',
+                quantity_change: quantity,
+                reason: `Reorder due to low stock alert`,
+                notes: notes || `Reorder created from low stock alert. ${product.supplier ? 'Supplier: ' + product.supplier.name : 'No supplier assigned'}`,
+                reference_number: `REORDER-${Date.now()}`
+            };
+
+            try {
+                // Create adjustment
+                await apiRequest('/api/adjustments', {
+                    method: 'POST',
+                    body: JSON.stringify(adjustmentData)
+                });
+                
+                showSuccess(`Reorder request created for ${quantity} units of ${product.name}!`);
+                closeReorderModal();
+                
+                // Reload data
+                setTimeout(loadLowStockProducts, 1000);
+            } catch (error) {
+                showError('Failed to create reorder request: ' + error.message);
+            }
+        }
+    </script>
+    <!-- PWA Installer -->
+    <link rel="stylesheet" href="assets/css/pwa-installer.css">
+    <script src="assets/js/pwa-installer.js"></script>
+
+    <!-- Touch Gestures -->
+    <link rel="stylesheet" href="assets/css/touch-gestures.css">
+    <script src="assets/js/touch-gestures.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

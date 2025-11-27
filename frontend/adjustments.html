@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Adjustments - FlowRack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>FlowRack - Stock Adjustments</h1>
+        </div>
+        <div class="nav-user">
+            <span id="userName">Loading...</span>
+            <button id="logoutBtn" class="btn-secondary">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button id="recordAdjustmentBtn" class="btn-primary">
+                <span class="icon">📝</span> Record Adjustment
+            </button>
+            <button id="viewSummaryBtn" class="btn-secondary">
+                <span class="icon">📊</span> View Summary
+            </button>
+            <button id="backBtn" class="btn-secondary">
+                <span class="icon">←</span> Back to Products
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="filterType">Type:</label>
+                <select id="filterType">
+                    <option value="">All Types</option>
+                    <option value="correction">Correction</option>
+                    <option value="damage">Damage</option>
+                    <option value="loss">Loss</option>
+                    <option value="found">Found</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="return">Return</option>
+                    <option value="initial">Initial</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterProduct">Product:</label>
+                <select id="filterProduct">
+                    <option value="">All Products</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterDateFrom">From:</label>
+                <input type="date" id="filterDateFrom">
+            </div>
+            <div class="filter-group">
+                <label for="filterDateTo">To:</label>
+                <input type="date" id="filterDateTo">
+            </div>
+            <button id="applyFiltersBtn" class="btn-primary">Apply Filters</button>
+            <button id="clearFiltersBtn" class="btn-secondary">Clear</button>
+        </div>
+
+        <!-- Adjustments Table -->
+        <div class="table-container">
+            <table id="adjustmentsTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Product</th>
+                        <th>Type</th>
+                        <th>Change</th>
+                        <th>Before</th>
+                        <th>After</th>
+                        <th>Reason</th>
+                        <th>Adjusted By</th>
+                        <th>Reference</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="adjustmentsBody">
+                    <tr>
+                        <td colspan="10" class="text-center">Loading adjustments...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button id="prevPageBtn" class="btn-secondary" disabled>Previous</button>
+            <span id="pageInfo">Page 1</span>
+            <button id="nextPageBtn" class="btn-secondary">Next</button>
+        </div>
+    </div>
+
+    <!-- Record Adjustment Modal -->
+    <div id="adjustmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Record Stock Adjustment</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="adjustmentForm">
+                    <div class="form-group">
+                        <label for="adjProduct">Product *</label>
+                        <select id="adjProduct" required>
+                            <option value="">Select product...</option>
+                        </select>
+                        <div id="currentStock" class="help-text"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adjType">Adjustment Type *</label>
+                        <select id="adjType" required>
+                            <option value="">Select type...</option>
+                            <option value="correction">Correction - Fix inventory count</option>
+                            <option value="damage">Damage - Damaged items</option>
+                            <option value="loss">Loss - Lost/stolen items</option>
+                            <option value="found">Found - Found items</option>
+                            <option value="transfer">Transfer - Location transfer</option>
+                            <option value="return">Return - Customer return</option>
+                            <option value="initial">Initial - Initial stock entry</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adjQuantity">Quantity Change *</label>
+                        <input type="number" id="adjQuantity" step="0.01" required 
+                               placeholder="Use negative for reductions">
+                        <div class="help-text">Positive for increases, negative for decreases</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adjReason">Reason *</label>
+                        <textarea id="adjReason" rows="3" required 
+                                  placeholder="Explain why this adjustment is needed..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adjReference">Reference Number</label>
+                        <input type="text" id="adjReference" 
+                               placeholder="Purchase order, incident report, etc.">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="adjNotes">Additional Notes</label>
+                        <textarea id="adjNotes" rows="2" 
+                                  placeholder="Any additional information..."></textarea>
+                    </div>
+
+                    <div id="adjustmentPreview" class="alert alert-info" style="display: none;">
+                        <strong>Preview:</strong>
+                        <div id="previewContent"></div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Record Adjustment</button>
+                        <button type="button" class="btn-secondary" id="cancelAdjBtn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adjustment Details Modal -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Adjustment Details</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="adjustmentDetails"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Modal -->
+    <div id="summaryModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>Adjustments Summary</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="summaryContent">
+                    <div class="summary-section">
+                        <h3>By Type</h3>
+                        <div id="summaryByType"></div>
+                    </div>
+                    <div class="summary-section">
+                        <h3>Most Adjusted Products</h3>
+                        <div id="summaryByProduct"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('flowrack_token');
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        const user = JSON.parse(localStorage.getItem('flowrack_user') || '{}');
+        if (user.first_name && user.last_name) {
+            document.getElementById('userName').textContent = user.first_name + ' ' + user.last_name;
+        }
+
+        // State
+        let currentPage = 1;
+        let currentFilters = {};
+        let allProducts = [];
+
+        // Load initial data
+        loadProducts();
+        loadAdjustments();
+
+        // Event Listeners
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        document.getElementById('recordAdjustmentBtn').addEventListener('click', openAdjustmentModal);
+        document.getElementById('viewSummaryBtn').addEventListener('click', showSummary);
+        document.getElementById('backBtn').addEventListener('click', () => window.location.href = 'products.html');
+        document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+        document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+        document.getElementById('adjustmentForm').addEventListener('submit', submitAdjustment);
+        document.getElementById('cancelAdjBtn').addEventListener('click', closeAdjustmentModal);
+        document.getElementById('adjProduct').addEventListener('change', updateStockInfo);
+        document.getElementById('adjQuantity').addEventListener('input', updatePreview);
+        document.getElementById('prevPageBtn').addEventListener('click', () => changePage(-1));
+        document.getElementById('nextPageBtn').addEventListener('click', () => changePage(1));
+
+        // Close modals when clicking X or outside
+        document.querySelectorAll('.modal .close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', function() {
+                this.closest('.modal').style.display = 'none';
+            });
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        });
+
+        // Functions
+        async function loadProducts() {
+            try {
+                const response = await apiRequest('/api/products');
+                allProducts = response.products;
+                
+                // Populate product selects
+                const productSelects = [
+                    document.getElementById('filterProduct'),
+                    document.getElementById('adjProduct')
+                ];
+                
+                productSelects.forEach(select => {
+                    const isFilter = select.id === 'filterProduct';
+                    if (!isFilter) select.innerHTML = '<option value="">Select product...</option>';
+                    
+                    allProducts.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product.id;
+                        option.textContent = `${product.name} (${product.product_code})`;
+                        select.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                showError('Failed to load products: ' + error.message);
+            }
+        }
+
+        async function loadAdjustments() {
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    limit: 20,
+                    ...currentFilters
+                });
+
+                const response = await apiRequest(`/api/adjustments?${params}`);
+                displayAdjustments(response.adjustments);
+                updatePagination(response);
+            } catch (error) {
+                showError('Failed to load adjustments: ' + error.message);
+                document.getElementById('adjustmentsBody').innerHTML =
+                    `<tr><td colspan="10" class="text-center error">Error: ${error.message}</td></tr>`;
+            }
+        }
+
+        function displayAdjustments(adjustments) {
+            const tbody = document.getElementById('adjustmentsBody');
+            
+            if (!adjustments || adjustments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center">No adjustments found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = adjustments.map(adj => `
+                <tr>
+                    <td>${formatDateTime(adj.created_at)}</td>
+                    <td>${adj.product_name}</td>
+                    <td><span class="badge badge-${adj.adjustment_type}">${adj.adjustment_type}</span></td>
+                    <td class="${adj.quantity_change >= 0 ? 'text-success' : 'text-danger'}">
+                        ${adj.quantity_change >= 0 ? '+' : ''}${adj.quantity_change}
+                    </td>
+                    <td>${adj.quantity_before}</td>
+                    <td>${adj.quantity_after}</td>
+                    <td>${truncate(adj.reason, 30)}</td>
+                    <td>${adj.adjusted_by_name || 'System'}</td>
+                    <td>${adj.reference_number || '-'}</td>
+                    <td>
+                        <button class="btn-small" onclick="viewDetails(${adj.id})">View</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updatePagination(response) {
+            const totalPages = Math.ceil((response.total || 0) / 20);
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages || 1}`;
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            loadAdjustments();
+        }
+
+        function applyFilters() {
+            currentFilters = {};
+            
+            const type = document.getElementById('filterType').value;
+            const productId = document.getElementById('filterProduct').value;
+            const dateFrom = document.getElementById('filterDateFrom').value;
+            const dateTo = document.getElementById('filterDateTo').value;
+            
+            if (type) currentFilters.type = type;
+            if (productId) currentFilters.product_id = productId;
+            if (dateFrom) currentFilters.date_from = dateFrom;
+            if (dateTo) currentFilters.date_to = dateTo;
+            
+            currentPage = 1;
+            loadAdjustments();
+        }
+
+        function clearFilters() {
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterProduct').value = '';
+            document.getElementById('filterDateFrom').value = '';
+            document.getElementById('filterDateTo').value = '';
+            currentFilters = {};
+            currentPage = 1;
+            loadAdjustments();
+        }
+
+        function openAdjustmentModal() {
+            document.getElementById('adjustmentModal').style.display = 'block';
+            document.getElementById('adjustmentForm').reset();
+            document.getElementById('currentStock').textContent = '';
+            document.getElementById('adjustmentPreview').style.display = 'none';
+        }
+
+        function closeAdjustmentModal() {
+            document.getElementById('adjustmentModal').style.display = 'none';
+        }
+
+        function updateStockInfo() {
+            const productId = document.getElementById('adjProduct').value;
+            if (!productId) {
+                document.getElementById('currentStock').textContent = '';
+                return;
+            }
+            
+            const product = allProducts.find(p => p.id == productId);
+            if (product) {
+                document.getElementById('currentStock').textContent =
+                    `Current stock: ${product.stock_quantity} ${product.unit}`;
+            }
+        }
+
+        function updatePreview() {
+            const productId = document.getElementById('adjProduct').value;
+            const quantity = parseFloat(document.getElementById('adjQuantity').value) || 0;
+            
+            if (!productId || quantity === 0) {
+                document.getElementById('adjustmentPreview').style.display = 'none';
+                return;
+            }
+            
+            const product = allProducts.find(p => p.id == productId);
+            if (product) {
+                const newStock = product.stock_quantity + quantity;
+                const preview = document.getElementById('previewContent');
+                preview.innerHTML = `
+                    Stock will change: ${product.stock_quantity} → ${newStock} ${product.unit}
+                    ${newStock < 0 ? '<br><span class="text-danger">Warning: Negative stock!</span>' : ''}
+                    ${newStock < product.minimum_stock ? '<br><span class="text-warning">Warning: Below minimum stock!</span>' : ''}
+                `;
+                document.getElementById('adjustmentPreview').style.display = 'block';
+            }
+        }
+
+        async function submitAdjustment(e) {
+            e.preventDefault();
+            
+            const data = {
+                product_id: parseInt(document.getElementById('adjProduct').value),
+                adjustment_type: document.getElementById('adjType').value,
+                quantity_change: parseFloat(document.getElementById('adjQuantity').value),
+                reason: document.getElementById('adjReason').value,
+                reference_number: document.getElementById('adjReference').value || null,
+                notes: document.getElementById('adjNotes').value || null
+            };
+
+            try {
+                await apiRequest('/api/adjustments', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                
+                showSuccess('Stock adjustment recorded successfully!');
+                closeAdjustmentModal();
+                loadAdjustments();
+                loadProducts(); // Refresh stock quantities
+            } catch (error) {
+                showError('Failed to record adjustment: ' + error.message);
+            }
+        }
+
+        async function viewDetails(adjustmentId) {
+            try {
+                const adjustment = await apiRequest(`/api/adjustments/${adjustmentId}`);
+                
+                const details = `
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <strong>Product:</strong> ${adjustment.product_name}
+                        </div>
+                        <div class="detail-item">
+                            <strong>Type:</strong> <span class="badge badge-${adjustment.adjustment_type}">${adjustment.adjustment_type}</span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Quantity Change:</strong> 
+                            <span class="${adjustment.quantity_change >= 0 ? 'text-success' : 'text-danger'}">
+                                ${adjustment.quantity_change >= 0 ? '+' : ''}${adjustment.quantity_change}
+                            </span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Before:</strong> ${adjustment.quantity_before}
+                        </div>
+                        <div class="detail-item">
+                            <strong>After:</strong> ${adjustment.quantity_after}
+                        </div>
+                        <div class="detail-item">
+                            <strong>Reference:</strong> ${adjustment.reference_number || 'N/A'}
+                        </div>
+                        <div class="detail-item full-width">
+                            <strong>Reason:</strong><br>${adjustment.reason}
+                        </div>
+                        ${adjustment.notes ? `
+                            <div class="detail-item full-width">
+                                <strong>Notes:</strong><br>${adjustment.notes}
+                            </div>
+                        ` : ''}
+                        <div class="detail-item">
+                            <strong>Adjusted By:</strong> ${adjustment.adjusted_by_name}
+                        </div>
+                        <div class="detail-item">
+                            <strong>Date:</strong> ${formatDateTime(adjustment.created_at)}
+                        </div>
+                        ${adjustment.approved_by ? `
+                            <div class="detail-item">
+                                <strong>Approved By:</strong> ${adjustment.approved_by_name}
+                            </div>
+                            <div class="detail-item">
+                                <strong>Approved At:</strong> ${formatDateTime(adjustment.approved_at)}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                document.getElementById('adjustmentDetails').innerHTML = details;
+                document.getElementById('detailsModal').style.display = 'block';
+            } catch (error) {
+                showError('Failed to load adjustment details: ' + error.message);
+            }
+        }
+
+        async function showSummary() {
+            try {
+                const summary = await apiRequest('/api/adjustments/summary');
+                
+                // By Type
+                const byTypeHTML = summary.by_type.map(item => `
+                    <div class="summary-card">
+                        <h4><span class="badge badge-${item.adjustment_type}">${item.adjustment_type}</span></h4>
+                        <p class="summary-count">${item.total_adjustments} adjustments</p>
+                        <p class="summary-change ${item.total_quantity_change >= 0 ? 'text-success' : 'text-danger'}">
+                            ${item.total_quantity_change >= 0 ? '+' : ''}${item.total_quantity_change} units
+                        </p>
+                    </div>
+                `).join('');
+                
+                // By Product
+                const byProductHTML = summary.most_adjusted_products.map(item => `
+                    <div class="summary-card">
+                        <h4>${item.product_name}</h4>
+                        <p class="summary-count">${item.adjustment_count} adjustments</p>
+                        <p class="summary-change">Last: ${formatDate(item.last_adjustment)}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('summaryByType').innerHTML = byTypeHTML || '<p>No data available</p>';
+                document.getElementById('summaryByProduct').innerHTML = byProductHTML || '<p>No data available</p>';
+                document.getElementById('summaryModal').style.display = 'block';
+            } catch (error) {
+                showError('Failed to load summary: ' + error.message);
+            }
+        }
+
+        // Utility functions for showing messages
+        function showError(message) {
+            alert('Error: ' + message);
+        }
+
+        function showSuccess(message) {
+            alert('Success: ' + message);
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+    </script>
+    <!-- PWA Installer -->
+    <link rel="stylesheet" href="assets/css/pwa-installer.css">
+    <script src="assets/js/pwa-installer.js"></script>
+
+    <!-- Touch Gestures -->
+    <link rel="stylesheet" href="assets/css/touch-gestures.css">
+    <script src="assets/js/touch-gestures.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

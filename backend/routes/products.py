@@ -227,29 +227,6 @@ def get_categories():
         logging.error(f"Get categories error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@products_bp.route('/low-stock', methods=['GET'])
-@jwt_required()
-def get_low_stock_products():
-    """Get products with low stock (operator/admin only)"""
-    try:
-        current_user_id = get_current_user_id()
-        current_user = User.get_by_id(current_user_id)
-        
-        if not current_user or current_user.role not in ['admin', 'operator']:
-            return jsonify({'error': 'Insufficient permissions'}), 403
-        
-        threshold = float(request.args.get('threshold', 1.0))
-        products = Product.get_low_stock_products(threshold_multiplier=threshold)
-        
-        return jsonify({
-            'products': [product.to_dict() for product in products],
-            'count': len(products)
-        }), 200
-        
-    except Exception as e:
-        logging.error(f"Get low stock products error: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
-
 @products_bp.route('/<int:product_id>/availability', methods=['GET'])
 @jwt_required()
 def check_availability(product_id):
@@ -300,3 +277,146 @@ def get_product_transactions(product_id):
     except Exception as e:
         logging.error(f"Get product transactions error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
+
+
+@products_bp.route('/batch-update', methods=['POST'])
+@jwt_required()
+def batch_update_products():
+    """Update multiple products at once (admin only)"""
+    try:
+        current_user_id = get_current_user_id()
+        current_user = User.get_by_id(current_user_id)
+        
+        if not current_user or current_user.role != 'admin':
+            return jsonify({'error': 'Admin access required'}), 403
+        
+        data = request.get_json()
+        product_ids = data.get('product_ids', [])
+        updates = data.get('updates', {})
+        
+        if not product_ids:
+            return jsonify({'error': 'No products specified'}), 400
+        
+        if not updates:
+            return jsonify({'error': 'No updates specified'}), 400
+        
+        # Build update query dynamically
+        from backend.database import get_db_connection
+        
+        allowed_fields = ['category', 'location', 'minimum_stock', 'reorder_point', 
+                         'reorder_quantity', 'is_active', 'barcode']
+        update_fields = []
+        params = []
+        
+        for field, value in updates.items():
+            if field in allowed_fields:
+                update_fields.append(f"{field} = %s")
+                params.append(value)
+        
+        if not update_fields:
+            return jsonify({'error': 'No valid fields to update'}), 400
+        
+        params.append(tuple(product_ids))
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                query = f"""
+                    UPDATE products 
+                    SET {', '.join(update_fields)}, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ANY(%s)
+                    RETURNING id
+                """
+                cursor.execute(query, params)
+                updated_ids = [row['id'] for row in cursor.fetchall()]
+                conn.commit()
+        
+        return jsonify({
+            'message': f'Successfully updated {len(updated_ids)} products',
+            'updated_ids': updated_ids
+        }), 200
+        
+    except Exception as e:
+        logging.error(f"Batch update products error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@products_bp.route('/low-stock', methods=['GET'])
+@jwt_required()
+def get_low_stock_products():
+    """Get products with low stock levels"""
+    try:
+        from backend.database import get_db_connection
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        p.id,
+                        p.name,
+                        p.category,
+                        p.stock_quantity,
+                        p.minimum_stock,
+                        p.reorder_point,
+                        p.reorder_quantity,
+                        p.location,
+                        p.barcode,
+                        s.id as supplier_id,
+                        s.name as supplier_name,
+                        s.email as supplier_email,
+                        s.phone as supplier_phone,
+                        ps.cost_price,
+                        ps.lead_time_days,
+                        ps.minimum_order_quantity
+                    FROM products p
+                    LEFT JOIN product_suppliers ps ON p.id = ps.product_id AND ps.is_preferred = TRUE
+                    LEFT JOIN suppliers s ON ps.supplier_id = s.id
+                    WHERE p.is_active = TRUE 
+                        AND (
+                            p.stock_quantity <= COALESCE(p.reorder_point, p.minimum_stock)
+                            OR p.stock_quantity <= p.minimum_stock
+                        )
+                    ORDER BY 
+                        CASE 
+                            WHEN p.stock_quantity <= 0 THEN 1
+                            WHEN p.stock_quantity <= p.minimum_stock THEN 2
+                            WHEN p.stock_quantity <= p.reorder_point THEN 3
+                            ELSE 4
+                        END,
+                        p.stock_quantity ASC
+                """)
+                
+                low_stock_products = [
+                    {
+                        'id': row['id'],
+                        'name': row['name'],
+                        'category': row['category'],
+                        'stock_quantity': row['stock_quantity'],
+                        'minimum_stock': row['minimum_stock'],
+                        'reorder_point': row['reorder_point'],
+                        'reorder_quantity': row['reorder_quantity'],
+                        'location': row['location'],
+                        'barcode': row['barcode'],
+                        'status': 'out_of_stock' if row['stock_quantity'] <= 0 else 
+                                 'critical' if row['stock_quantity'] <= row['minimum_stock'] else 
+                                 'low',
+                        'supplier': {
+                            'id': row['supplier_id'],
+                            'name': row['supplier_name'],
+                            'email': row['supplier_email'],
+                            'phone': row['supplier_phone'],
+                            'cost_price': float(row['cost_price']) if row['cost_price'] else None,
+                            'lead_time_days': row['lead_time_days'],
+                            'minimum_order_quantity': row['minimum_order_quantity']
+                        } if row['supplier_id'] else None
+                    }
+                    for row in cursor.fetchall()
+                ]
+        
+        return jsonify({
+            'low_stock_products': low_stock_products,
+            'count': len(low_stock_products)
+        }), 200
+        
+    except Exception as e:
+        logging.error(f"Get low stock products error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
