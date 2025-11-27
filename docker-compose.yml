@@ -5,18 +5,24 @@ services:
     build: .
     ports:
       - "5000:5000"
-    env_file:
-      - .env
     depends_on:
       - db
+    env_file:
+      - .env
 
   db:
     image: postgres:16
+    container_name: flowrack_db
     restart: always
-    env_file:
-      - .env
+    environment:
+      POSTGRES_USER: flowrack
+      POSTGRES_PASSWORD: flowrack123
+      POSTGRES_DB: flowrack
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
 volumes:
   pgdata:
+
